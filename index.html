@@ -1366,25 +1366,26 @@ const LAYERS = [
   {name:"hand_right",group:"Body",color:"#86efac"}
 ];
 
-let uploadedImage = null;
+var uploadedImage = null;
+var API_URL = 'https://sega-solving-walter-rivers.trycloudflare.com';
 
 function handleFile(file) {
-  if(!file || !file.type.startsWith('image/')) return;
-  const reader = new FileReader();
+  if (!file || !file.type.startsWith('image/')) return;
+  var reader = new FileReader();
   reader.onload = function(e) {
-    const img = new Image();
+    var img = new Image();
     img.onload = function() {
       uploadedImage = img;
-      const oc = document.getElementById('original-canvas');
-      const sc = document.getElementById('segment-canvas');
-      const s = Math.min(300/img.width, 300/img.height, 1);
+      var oc = document.getElementById('original-canvas');
+      var sc = document.getElementById('segment-canvas');
+      var s = Math.min(300 / img.width, 300 / img.height, 1);
       oc.width = sc.width = img.width * s;
       oc.height = sc.height = img.height * s;
       oc.getContext('2d').drawImage(img, 0, 0, oc.width, oc.height);
       sc.getContext('2d').drawImage(img, 0, 0, sc.width, sc.height);
       document.getElementById('demo-preview').style.display = 'block';
       document.getElementById('run-btn').style.display = 'inline-block';
-      document.getElementById('run-btn').textContent = '✨ Run Segmentation';
+      document.getElementById('run-btn').textContent = '\u2728 Run Segmentation';
       document.getElementById('results').style.display = 'none';
     };
     img.src = e.target.result;
@@ -1392,106 +1393,103 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
-
-const API_URL = 'https://thinkpad-rainbow-immune-reid.trycloudflare.com';
-
-async function runSegmentationReal() {
-  const formData = new FormData();
-  const canvas = document.createElement('canvas');
-  canvas.width = uploadedImage.naturalWidth || uploadedImage.width;
-  canvas.height = uploadedImage.naturalHeight || uploadedImage.height;
-  canvas.getContext('2d').drawImage(uploadedImage, 0, 0);
-  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-  formData.append('file', blob, 'character.png');
-  
-  const upRes = await fetch(API_URL + '/api/upload', {method:'POST', body:formData});
-  if(!upRes.ok) throw new Error('Upload failed');
-  const upData = await upRes.json();
-  
-  const segRes = await fetch(API_URL + '/api/segment/' + upData.job_id, {method:'POST'});
-  if(!segRes.ok) throw new Error('Segment failed');
-  return await segRes.json();
-}
-
-function runSegmentation() {
-  if(!uploadedImage) return;
-  document.getElementById('run-btn').style.display = 'none';
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('results').style.display = 'none';
-
-  
-  // Try real API first
-  runSegmentationReal().then(function(data) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('results').style.display = 'block';
-    document.getElementById('run-btn').style.display = 'inline-block';
-    document.getElementById('run-btn').textContent = '🔄 Run Again';
-    // Use real layer count
-    var realLayers = data.layers || data.segments || [];
-    if(realLayers.length > 0) {
-      document.getElementById('layer-count').textContent = realLayers.length;
-      var grid = document.getElementById('layer-grid');
-      grid.innerHTML = '';
-      realLayers.forEach(function(l) {
-        var card = document.createElement('div');
-        card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid #6366f140;transition:all .3s';
-        card.innerHTML = '<div style="color:#e2e8f0;font-size:0.75rem">'+l.name+'</div>';
-        grid.appendChild(card);
-      });
-    }
-  }).catch(function(err) {
-    console.log('API unavailable, using demo mode:', err.message);
-    // Fallback to demo mode
-    setTimeout(function() {
-    const sc = document.getElementById('segment-canvas');
-    const ctx = sc.getContext('2d');
+function runDemoMode() {
+  setTimeout(function() {
+    var sc = document.getElementById('segment-canvas');
+    var ctx = sc.getContext('2d');
     ctx.drawImage(uploadedImage, 0, 0, sc.width, sc.height);
-
-    // Draw colored overlay regions for each layer
-    const w = sc.width, h = sc.height;
+    var w = sc.width, h = sc.height;
     LAYERS.forEach(function(layer, i) {
       ctx.globalAlpha = 0.15;
       ctx.fillStyle = layer.color;
-      // Simulate different regions based on layer type
-      if(layer.group === 'Hair') {
+      if (layer.group === 'Hair') {
         ctx.fillRect(0, 0, w, h * 0.35);
-      } else if(layer.name.includes('eye')) {
-        const ex = layer.name.includes('_L') ? w*0.3 : w*0.65;
+      } else if (layer.name.indexOf('eye') !== -1) {
+        var ex = layer.name.indexOf('_L') !== -1 ? w * 0.3 : w * 0.65;
         ctx.beginPath();
-        ctx.ellipse(ex, h*0.38, w*0.08, h*0.04, 0, 0, Math.PI*2);
+        ctx.ellipse(ex, h * 0.38, w * 0.08, h * 0.04, 0, 0, Math.PI * 2);
         ctx.fill();
-      } else if(layer.name.includes('mouth')) {
+      } else if (layer.name.indexOf('mouth') !== -1) {
         ctx.beginPath();
-        ctx.ellipse(w*0.48, h*0.52, w*0.06, h*0.025, 0, 0, Math.PI*2);
+        ctx.ellipse(w * 0.48, h * 0.52, w * 0.06, h * 0.025, 0, 0, Math.PI * 2);
         ctx.fill();
-      } else if(layer.name === 'face_skin' || layer.name === 'nose') {
+      } else if (layer.name === 'face_skin' || layer.name === 'nose') {
         ctx.beginPath();
-        ctx.ellipse(w*0.48, h*0.4, w*0.15, h*0.18, 0, 0, Math.PI*2);
+        ctx.ellipse(w * 0.48, h * 0.4, w * 0.15, h * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
-      } else if(layer.group === 'Body') {
-        ctx.fillRect(w*0.2, h*0.55, w*0.6, h*0.45);
+      } else if (layer.group === 'Body') {
+        ctx.fillRect(w * 0.2, h * 0.55, w * 0.6, h * 0.45);
       }
     });
     ctx.globalAlpha = 1;
-
-    // Build layer grid
-    const grid = document.getElementById('layer-grid');
+    var grid = document.getElementById('layer-grid');
     grid.innerHTML = '';
     LAYERS.forEach(function(layer) {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid '+layer.color+'40;transition:all .3s;cursor:pointer';
-      card.onmouseover = function(){ this.style.borderColor = layer.color; this.style.transform = 'translateY(-4px)'; };
-      card.onmouseout = function(){ this.style.borderColor = layer.color+'40'; this.style.transform = 'translateY(0)'; };
-      card.innerHTML = '<div style="width:24px;height:24px;border-radius:50%;background:'+layer.color+';margin:0 auto 8px"></div><div style="color:#e2e8f0;font-size:0.75rem;word-break:break-all">'+layer.name+'</div><div style="color:#64748b;font-size:0.65rem;margin-top:2px">'+layer.group+'</div>';
+      var card = document.createElement('div');
+      card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid ' + layer.color + '40;transition:all .3s;cursor:pointer';
+      card.onmouseover = function() { this.style.borderColor = layer.color; this.style.transform = 'translateY(-4px)'; };
+      card.onmouseout = function() { this.style.borderColor = layer.color + '40'; this.style.transform = 'translateY(0)'; };
+      card.innerHTML = '<div style="width:24px;height:24px;border-radius:50%;background:' + layer.color + ';margin:0 auto 8px"></div>'
+        + '<div style="color:#e2e8f0;font-size:0.75rem;word-break:break-all">' + layer.name + '</div>'
+        + '<div style="color:#64748b;font-size:0.65rem;margin-top:2px">' + layer.group + '</div>';
       grid.appendChild(card);
     });
-
     document.getElementById('layer-count').textContent = LAYERS.length;
     document.getElementById('loading').style.display = 'none';
     document.getElementById('results').style.display = 'block';
     document.getElementById('run-btn').style.display = 'inline-block';
-    document.getElementById('run-btn').textContent = '🔄 Run Again';
+    document.getElementById('run-btn').textContent = '\ud83d\udd04 Run Again';
   }, 2000);
+}
+
+function runSegmentation() {
+  if (!uploadedImage) return;
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+
+  var canvas = document.createElement('canvas');
+  canvas.width = uploadedImage.naturalWidth || uploadedImage.width;
+  canvas.height = uploadedImage.naturalHeight || uploadedImage.height;
+  canvas.getContext('2d').drawImage(uploadedImage, 0, 0);
+  canvas.toBlob(function(blob) {
+    var formData = new FormData();
+    formData.append('file', blob, 'character.png');
+    fetch(API_URL + '/api/upload', {method: 'POST', body: formData})
+      .then(function(res) {
+        if (!res.ok) throw new Error('Upload failed');
+        return res.json();
+      })
+      .then(function(upData) {
+        return fetch(API_URL + '/api/segment/' + upData.job_id, {method: 'POST'});
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('Segment failed');
+        return res.json();
+      })
+      .then(function(data) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('run-btn').style.display = 'inline-block';
+        document.getElementById('run-btn').textContent = '\ud83d\udd04 Run Again';
+        var realLayers = data.layers || data.segments || [];
+        if (realLayers.length > 0) {
+          document.getElementById('layer-count').textContent = realLayers.length;
+          var grid = document.getElementById('layer-grid');
+          grid.innerHTML = '';
+          realLayers.forEach(function(l) {
+            var card = document.createElement('div');
+            card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid #6366f140;transition:all .3s';
+            card.innerHTML = '<div style="color:#e2e8f0;font-size:0.75rem">' + l.name + '</div>';
+            grid.appendChild(card);
+          });
+        }
+      })
+      .catch(function(err) {
+        console.log('API unavailable, using demo mode:', err.message);
+        runDemoMode();
+      });
+  }, 'image/png');
 }
 </script>
 </body>
