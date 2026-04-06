@@ -517,7 +517,7 @@
     <a href="#arch">Architecture</a>
     <a href="#compare">Metrics</a>
   </div>
-  <a href="#pipeline" class="nav-cta">Try Now →</a>
+  <a href="#demo" class="nav-cta">Try Now →</a>
 </nav>
 
 <!-- ─── HERO ─── -->
@@ -532,7 +532,7 @@
     <h1>Live2D Auto-Gen</h1>
     <p class="hero-sub">AI-Powered Live2D Model Generator — From Illustration to VTuber in Minutes</p>
     <div class="hero-ctas">
-      <a href="#pipeline" class="btn-primary">
+      <a href="#demo" class="btn-primary">
         🚀 Try Now
       </a>
       <a href="#pipeline" class="btn-secondary">
@@ -561,6 +561,167 @@
 </div>
 
 <div class="section-divider"></div>
+
+
+<!-- ─── LIVE DEMO ─── -->
+<section id="demo" class="reveal" style="padding:80px 20px;">
+  <div class="section-label">Interactive</div>
+  <h2>Live Demo</h2>
+  <p class="section-desc">Upload any character illustration to watch simulated 27-layer AI segmentation — the exact layers extracted for Live2D rigging.</p>
+
+  <style>
+    @keyframes dzFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    #demo-wrap .layer-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .25rem;border-radius:6px;font-size:.8rem;animation:dzFadeIn .25s ease both}
+    #dz:hover{border-color:var(--violet)!important;background:rgba(99,102,241,.06)!important}
+  </style>
+
+  <div id="demo-wrap" style="max-width:960px;margin:2rem auto 0;display:flex;flex-direction:column;align-items:center;gap:2rem;">
+
+    <div id="dz" style="width:100%;max-width:480px;border:2px dashed var(--purple);border-radius:16px;padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--card);position:relative;">
+      <div style="font-size:3.5rem;margin-bottom:1rem;">🎨</div>
+      <div style="font-size:1.1rem;font-weight:600;margin-bottom:.5rem;">Drop your illustration here</div>
+      <div style="color:var(--muted);font-size:.875rem;margin-bottom:1rem;">or click to browse · PNG / JPG / WebP</div>
+      <div style="display:inline-block;padding:.45rem 1.2rem;border-radius:8px;background:var(--purple);font-size:.85rem;font-weight:600;">Choose File</div>
+      <input type="file" id="dz-input" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+    </div>
+
+    <div id="demo-result" style="display:none;width:100%;">
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;align-items:flex-start;">
+
+        <div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);flex-shrink:0;">
+          <canvas id="dc-base" style="display:block;max-width:480px;height:auto;"></canvas>
+          <canvas id="dc-over" style="position:absolute;top:0;left:0;display:block;"></canvas>
+        </div>
+
+        <div id="layer-panel" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;min-width:210px;max-height:480px;overflow-y:auto;flex:1 1 180px;">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.75rem;">Detected Layers</div>
+          <div id="layer-rows"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem;text-align:center;">
+        <div id="seg-label" style="font-size:.875rem;color:var(--muted);margin-bottom:.5rem;">Initializing…</div>
+        <div style="height:4px;background:rgba(99,102,241,.2);border-radius:2px;max-width:480px;margin:0 auto;">
+          <div id="seg-bar" style="height:100%;background:linear-gradient(90deg,var(--purple),var(--violet));border-radius:2px;width:0%;transition:width .25s;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem;text-align:center;">
+        <button onclick="document.getElementById('demo-result').style.display='none';document.getElementById('dz').style.display='';document.getElementById('dz-input').value=''" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:.4rem 1rem;border-radius:8px;cursor:pointer;font-size:.8rem;">↺ Try another image</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var LAYERS=[
+      {n:'Hair_back',       c:'#7c3aed',r:[0,   0,   1,   .40]},
+      {n:'Hair_top',        c:'#6d28d9',r:[.18, 0,   .82, .22]},
+      {n:'Hair_front_L',    c:'#8b5cf6',r:[0,   .06, .32, .50]},
+      {n:'Hair_front_R',    c:'#a78bfa',r:[.68, .06, 1,   .50]},
+      {n:'Hair_side_L',     c:'#c4b5fd',r:[0,   .14, .20, .54]},
+      {n:'Hair_side_R',     c:'#ddd6fe',r:[.80, .14, 1,   .54]},
+      {n:'Head_base',       c:'#f59e0b',r:[.16, .08, .84, .58]},
+      {n:'Face_outline',    c:'#fbbf24',r:[.20, .10, .80, .56]},
+      {n:'Ear_L',           c:'#f97316',r:[.12, .26, .24, .46]},
+      {n:'Ear_R',           c:'#fb923c',r:[.76, .26, .88, .46]},
+      {n:'Eyebrow_L',       c:'#84cc16',r:[.26, .23, .46, .30]},
+      {n:'Eyebrow_R',       c:'#a3e635',r:[.54, .23, .74, .30]},
+      {n:'Eye_white_L',     c:'#06b6d4',r:[.27, .29, .46, .40]},
+      {n:'Eye_white_R',     c:'#22d3ee',r:[.54, .29, .73, .40]},
+      {n:'Iris_L',          c:'#0ea5e9',r:[.31, .30, .43, .39]},
+      {n:'Iris_R',          c:'#38bdf8',r:[.57, .30, .69, .39]},
+      {n:'Eyelid_upper_L',  c:'#2563eb',r:[.27, .28, .46, .33]},
+      {n:'Eyelid_upper_R',  c:'#3b82f6',r:[.54, .28, .73, .33]},
+      {n:'Eyelid_lower_L',  c:'#60a5fa',r:[.27, .37, .46, .42]},
+      {n:'Eyelid_lower_R',  c:'#93c5fd',r:[.54, .37, .73, .42]},
+      {n:'Nose',            c:'#ec4899',r:[.38, .39, .62, .50]},
+      {n:'Mouth_base',      c:'#f472b6',r:[.32, .50, .68, .59]},
+      {n:'Mouth_inner',     c:'#fb7185',r:[.36, .51, .64, .58]},
+      {n:'Neck',            c:'#10b981',r:[.35, .57, .65, .70]},
+      {n:'Shoulder_L',      c:'#34d399',r:[0,   .64, .36, .88]},
+      {n:'Shoulder_R',      c:'#6ee7b7',r:[.64, .64, 1,   .88]},
+      {n:'Body_torso',      c:'#fcd34d',r:[.14, .68, .86, 1  ]},
+    ];
+
+    var dz=document.getElementById('dz');
+    var inp=document.getElementById('dz-input');
+    var result=document.getElementById('demo-result');
+    var base=document.getElementById('dc-base');
+    var over=document.getElementById('dc-over');
+    var bctx=base.getContext('2d');
+    var octx=over.getContext('2d');
+    var rows=document.getElementById('layer-rows');
+    var bar=document.getElementById('seg-bar');
+    var lbl=document.getElementById('seg-label');
+
+    dz.addEventListener('dragover',function(e){e.preventDefault();dz.style.borderColor='#a78bfa';});
+    dz.addEventListener('dragleave',function(){dz.style.borderColor='';});
+    dz.addEventListener('drop',function(e){e.preventDefault();dz.style.borderColor='';if(e.dataTransfer.files[0])go(e.dataTransfer.files[0]);});
+    inp.addEventListener('change',function(e){if(e.target.files[0])go(e.target.files[0]);});
+
+    function go(file){
+      if(!file.type.startsWith('image/'))return;
+      var fr=new FileReader();
+      fr.onload=function(ev){
+        var img=new Image();
+        img.onload=function(){run(img);};
+        img.src=ev.target.result;
+      };
+      fr.readAsDataURL(file);
+    }
+
+    function run(img){
+      var maxW=Math.min(480,window.innerWidth-48);
+      var sc=maxW/img.width;
+      var w=Math.round(img.width*sc),h=Math.round(img.height*sc);
+      base.width=w;base.height=h;
+      over.width=w;over.height=h;
+      over.style.width=w+'px';over.style.height=h+'px';
+      bctx.drawImage(img,0,0,w,h);
+      octx.clearRect(0,0,w,h);
+      rows.innerHTML='';
+      bar.style.width='0%';
+      lbl.textContent='Initializing segmentation model…';
+      dz.style.display='none';
+      result.style.display='block';
+      var i=0;
+      function tick(){
+        if(i>=LAYERS.length){
+          lbl.textContent='✓ '+LAYERS.length+' layers detected — ready for rigging';
+          bar.style.width='100%';
+          return;
+        }
+        var L=LAYERS[i];
+        var x=Math.round(L.r[0]*w),y=Math.round(L.r[1]*h);
+        var rw=Math.round((L.r[2]-L.r[0])*w),rh=Math.round((L.r[3]-L.r[1])*h);
+        octx.save();
+        octx.globalAlpha=.32;
+        octx.fillStyle=L.c;
+        if(octx.roundRect){octx.beginPath();octx.roundRect(x,y,rw,rh,4);octx.fill();}
+        else{octx.fillRect(x,y,rw,rh);}
+        octx.restore();
+        octx.save();
+        octx.globalAlpha=.75;
+        octx.strokeStyle=L.c;
+        octx.lineWidth=1.5;
+        if(octx.roundRect){octx.beginPath();octx.roundRect(x,y,rw,rh,4);octx.stroke();}
+        else{octx.strokeRect(x,y,rw,rh);}
+        octx.restore();
+        var row=document.createElement('div');
+        row.className='layer-row';
+        row.innerHTML='<span style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:'+L.c+'"></span>'+L.n;
+        rows.appendChild(row);
+        rows.scrollTop=rows.scrollHeight;
+        bar.style.width=((i+1)/LAYERS.length*100)+'%';
+        lbl.textContent='Segmenting layer '+(i+1)+' / '+LAYERS.length+' — '+L.n;
+        i++;setTimeout(tick,110);
+      }
+      setTimeout(tick,400);
+    }
+  })();
+  </script>
+</section>
 
 <!-- ─── PIPELINE ─── -->
 <section id="pipeline" class="reveal">
