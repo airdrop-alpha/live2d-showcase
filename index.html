@@ -1381,6 +1381,8 @@ function handleFile(file) {
       oc.getContext('2d').drawImage(img, 0, 0, oc.width, oc.height);
       sc.getContext('2d').drawImage(img, 0, 0, sc.width, sc.height);
       document.getElementById('demo-preview').style.display = 'block';
+      document.getElementById('run-btn').style.display = 'inline-block';
+      document.getElementById('run-btn').textContent = '✨ Run Segmentation';
       document.getElementById('results').style.display = 'none';
     };
     img.src = e.target.result;
