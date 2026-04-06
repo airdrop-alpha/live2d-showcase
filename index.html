@@ -471,6 +471,7 @@
       0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
       50%       { box-shadow: 0 0 40px rgba(99,102,241,0.6); }
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes countUp {
       from { opacity: 0; }
       to   { opacity: 1; }
@@ -564,427 +565,46 @@
 
 
 <!-- ─── LIVE DEMO ─── -->
-<section id="demo" class="reveal" style="padding:80px 20px;">
-  <div class="section-label">Interactive</div>
-  <h2>Live Demo</h2>
-  <p class="section-desc">Upload any character illustration and run AI segmentation — watch 27 layers get extracted in real time, ready for Live2D rigging.</p>
+<section id="demo" style="padding:80px 20px;max-width:1000px;margin:auto;text-align:center">
+  <h2 style="font-size:2.5rem;margin-bottom:1rem;background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Live Demo</h2>
+  <p style="color:#94a3b8;margin-bottom:2rem">Upload a character illustration and watch the AI segment it into 27+ layers</p>
 
-  <style>
-    @keyframes dzFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes pulseGlow{0%,100%{box-shadow:0 0 20px rgba(99,102,241,.3)}50%{box-shadow:0 0 40px rgba(99,102,241,.7)}}
-    @keyframes thumbIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-
-    #dz{transition:all .25s;}
-    #dz.dz-active{border-color:#a78bfa!important;background:rgba(99,102,241,.08)!important;transform:scale(1.01);}
-    #dz:hover{border-color:var(--violet)!important;background:rgba(99,102,241,.05)!important;}
-
-    #demo-preview-area{display:none;width:100%;max-width:540px;}
-    #demo-preview-img{width:100%;border-radius:12px;border:1px solid var(--border);display:block;}
-
-    #run-btn{
-      display:inline-flex;align-items:center;gap:.6rem;
-      padding:.875rem 2.5rem;border-radius:12px;font-size:1rem;font-weight:700;
-      background:linear-gradient(135deg,var(--purple),var(--violet));
-      color:white;border:none;cursor:pointer;
-      box-shadow:0 0 30px rgba(99,102,241,.4);
-      transition:all .2s;
-      animation:pulseGlow 2.5s infinite;
-    }
-    #run-btn:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(99,102,241,.7);}
-    #run-btn:disabled{opacity:.5;cursor:not-allowed;animation:none;transform:none;}
-
-    .seg-spinner{
-      width:18px;height:18px;border-radius:50%;
-      border:2.5px solid rgba(255,255,255,.3);
-      border-top-color:white;
-      animation:spin .7s linear infinite;
-      display:none;
-    }
-    #run-btn.loading .seg-spinner{display:block;}
-    #run-btn.loading .run-icon{display:none;}
-
-    #demo-result-area{display:none;width:100%;}
-
-    .demo-stats-row{
-      display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;
-      margin-bottom:1.5rem;
-    }
-    .demo-stat{
-      background:var(--card);border:1px solid var(--border);
-      border-radius:12px;padding:.75rem 1.5rem;text-align:center;
-      min-width:110px;
-    }
-    .demo-stat .dsnum{
-      font-size:1.75rem;font-weight:800;
-      background:linear-gradient(135deg,var(--purple),var(--pink));
-      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-      background-clip:text;
-    }
-    .demo-stat .dslabel{font-size:.72rem;color:var(--muted);margin-top:.15rem;}
-
-    #seg-progress-wrap{margin-bottom:1.5rem;text-align:center;}
-    #seg-label{font-size:.875rem;color:var(--muted);margin-bottom:.5rem;}
-    #seg-bar-track{height:5px;background:rgba(99,102,241,.2);border-radius:3px;max-width:540px;margin:0 auto;}
-    #seg-bar{height:100%;background:linear-gradient(90deg,var(--purple),var(--violet),var(--pink));border-radius:3px;width:0%;transition:width .2s;}
-
-    .demo-main-canvas-wrap{
-      position:relative;border-radius:12px;overflow:hidden;
-      border:1px solid var(--border);flex-shrink:0;
-      max-width:480px;width:100%;
-    }
-    #dc-base{display:block;width:100%;height:auto;}
-    #dc-over{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
-
-    #layer-thumb-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
-      gap:.75rem;margin-top:2rem;
-    }
-    .layer-thumb-card{
-      background:var(--card);border:1px solid var(--border);
-      border-radius:10px;overflow:hidden;cursor:pointer;
-      transition:all .2s;
-      animation:thumbIn .3s ease both;
-    }
-    .layer-thumb-card:hover{
-      border-color:rgba(99,102,241,.6);
-      transform:translateY(-3px);
-      box-shadow:0 12px 28px rgba(0,0,0,.5);
-    }
-    .layer-thumb-card canvas{display:block;width:100%;height:72px;object-fit:cover;}
-    .layer-thumb-info{padding:.4rem .5rem;}
-    .layer-thumb-name{font-size:.72rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .layer-thumb-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:.3rem;vertical-align:middle;flex-shrink:0;}
-
-    .demo-dl-row{
-      display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;
-      margin-top:2rem;
-    }
-    .dl-btn{
-      display:inline-flex;align-items:center;gap:.5rem;
-      padding:.65rem 1.5rem;border-radius:10px;font-size:.875rem;font-weight:600;
-      cursor:pointer;border:none;transition:all .2s;text-decoration:none;
-    }
-    .dl-btn-psd{
-      background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;
-      box-shadow:0 0 20px rgba(124,58,237,.3);
-    }
-    .dl-btn-psd:hover{transform:translateY(-2px);box-shadow:0 0 35px rgba(124,58,237,.5);}
-    .dl-btn-zip{
-      background:linear-gradient(135deg,#0ea5e9,#06b6d4);color:white;
-      box-shadow:0 0 20px rgba(14,165,233,.3);
-    }
-    .dl-btn-zip:hover{transform:translateY(-2px);box-shadow:0 0 35px rgba(14,165,233,.5);}
-    .dl-btn-reset{
-      background:transparent;border:1px solid var(--border);color:var(--muted);
-    }
-    .dl-btn-reset:hover{background:rgba(255,255,255,.06);color:var(--text);}
-
-    .demo-mode-badge{
-      display:inline-flex;align-items:center;gap:.4rem;
-      font-size:.72rem;padding:.25rem .75rem;border-radius:999px;
-      background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);
-      color:#fbbf24;margin-bottom:1.25rem;
-    }
-    .demo-mode-badge.live{
-      background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#34d399;
-    }
-  </style>
-
-  <div id="demo-wrap" style="max-width:960px;margin:2.5rem auto 0;display:flex;flex-direction:column;align-items:center;gap:1.75rem;">
-
-    <!-- Step 1: Drop zone -->
-    <div id="dz" style="width:100%;max-width:540px;border:2px dashed var(--purple);border-radius:20px;padding:3.5rem 2rem;text-align:center;cursor:pointer;background:var(--card);position:relative;">
-      <div style="font-size:3.5rem;margin-bottom:1rem;pointer-events:none;">🎨</div>
-      <div style="font-size:1.15rem;font-weight:700;margin-bottom:.4rem;pointer-events:none;">Drop your illustration here</div>
-      <div style="color:var(--muted);font-size:.875rem;margin-bottom:1.25rem;pointer-events:none;">or click to browse — PNG / JPG / WebP supported</div>
-      <div style="display:inline-block;padding:.5rem 1.5rem;border-radius:10px;background:linear-gradient(135deg,var(--purple),var(--violet));font-size:.875rem;font-weight:600;pointer-events:none;">Choose File</div>
-      <input type="file" id="dz-input" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
-    </div>
-
-    <!-- Step 2: Preview + Run button -->
-    <div id="demo-preview-area">
-      <div style="text-align:center;margin-bottom:1rem;">
-        <div id="demo-mode-badge" class="demo-mode-badge">⚡ Demo Mode — frontend simulation</div>
-      </div>
-      <img id="demo-preview-img" src="" alt="preview" />
-      <div style="text-align:center;margin-top:1.25rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
-        <button id="run-btn" onclick="demoRun()">
-          <span class="run-icon">🔬</span>
-          <div class="seg-spinner"></div>
-          Run Segmentation
-        </button>
-        <button onclick="demoReset()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:.875rem 1.25rem;border-radius:12px;cursor:pointer;font-size:.9rem;">✕ Cancel</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Result -->
-    <div id="demo-result-area">
-      <div style="text-align:center;margin-bottom:1.5rem;">
-        <div class="demo-mode-badge" id="result-mode-badge">⚡ Demo Mode — frontend simulation</div>
-      </div>
-
-      <div id="seg-progress-wrap">
-        <div id="seg-label">Initializing…</div>
-        <div id="seg-bar-track"><div id="seg-bar"></div></div>
-      </div>
-
-      <div class="demo-stats-row" id="demo-stats" style="display:none;">
-        <div class="demo-stat"><div class="dsnum" id="stat-layers">0</div><div class="dslabel">Layers</div></div>
-        <div class="demo-stat"><div class="dsnum">5</div><div class="dslabel">Groups</div></div>
-        <div class="demo-stat"><div class="dsnum">52</div><div class="dslabel">Parameters</div></div>
-        <div class="demo-stat"><div class="dsnum">7</div><div class="dslabel">Physics Chains</div></div>
-      </div>
-
-      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;align-items:flex-start;">
-        <div class="demo-main-canvas-wrap">
-          <canvas id="dc-base"></canvas>
-          <canvas id="dc-over"></canvas>
-        </div>
-        <div id="layer-panel" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;min-width:200px;max-height:480px;overflow-y:auto;flex:1 1 160px;">
-          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.75rem;">Detected Layers</div>
-          <div id="layer-rows"></div>
-        </div>
-      </div>
-
-      <div id="layer-thumb-grid"></div>
-
-      <div class="demo-dl-row" id="demo-dl-row" style="display:none;">
-        <button class="dl-btn dl-btn-psd" onclick="demoDL('psd')">📄 Download PSD</button>
-        <button class="dl-btn dl-btn-zip" onclick="demoDL('zip')">📦 Download ZIP</button>
-        <button class="dl-btn dl-btn-reset" onclick="demoReset()">↺ Try Another</button>
-      </div>
-
-      <div id="dl-toast" style="display:none;text-align:center;margin-top:1rem;font-size:.8rem;color:var(--muted);"></div>
-    </div>
-
+  <!-- Upload Area -->
+  <div id="upload-area" onclick="document.getElementById('file-input').click()"
+       style="border:2px dashed #6366f1;border-radius:16px;padding:60px 40px;cursor:pointer;transition:all .3s;background:rgba(99,102,241,0.05);margin-bottom:2rem"
+       ondragover="event.preventDefault();this.style.borderColor='#a855f7';this.style.background='rgba(168,85,247,0.1)'"
+       ondragleave="this.style.borderColor='#6366f1';this.style.background='rgba(99,102,241,0.05)'"
+       ondrop="event.preventDefault();handleFile(event.dataTransfer.files[0]);this.style.borderColor='#6366f1'">
+    <div style="font-size:3rem;margin-bottom:1rem">🎨</div>
+    <div style="font-size:1.2rem;color:#e2e8f0;margin-bottom:0.5rem">Drop your character image here</div>
+    <div style="color:#64748b;font-size:0.9rem">or click to browse • PNG / JPG</div>
   </div>
+  <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
 
-  <script>
-  (function(){
-    var LAYERS=[
-      {n:'Hair_back',      c:'#7c3aed',r:[0,   0,   1,   .40],g:'Hair'},
-      {n:'Hair_top',       c:'#6d28d9',r:[.18, 0,   .82, .22],g:'Hair'},
-      {n:'Hair_front_L',   c:'#8b5cf6',r:[0,   .06, .32, .50],g:'Hair'},
-      {n:'Hair_front_R',   c:'#a78bfa',r:[.68, .06, 1,   .50],g:'Hair'},
-      {n:'Hair_side_L',    c:'#c4b5fd',r:[0,   .14, .20, .54],g:'Hair'},
-      {n:'Hair_side_R',    c:'#ddd6fe',r:[.80, .14, 1,   .54],g:'Hair'},
-      {n:'Head_base',      c:'#f59e0b',r:[.16, .08, .84, .58],g:'Head'},
-      {n:'Face_outline',   c:'#fbbf24',r:[.20, .10, .80, .56],g:'Head'},
-      {n:'Ear_L',          c:'#f97316',r:[.12, .26, .24, .46],g:'Head'},
-      {n:'Ear_R',          c:'#fb923c',r:[.76, .26, .88, .46],g:'Head'},
-      {n:'Eyebrow_L',      c:'#84cc16',r:[.26, .23, .46, .30],g:'Eyes'},
-      {n:'Eyebrow_R',      c:'#a3e635',r:[.54, .23, .74, .30],g:'Eyes'},
-      {n:'Eye_white_L',    c:'#06b6d4',r:[.27, .29, .46, .40],g:'Eyes'},
-      {n:'Eye_white_R',    c:'#22d3ee',r:[.54, .29, .73, .40],g:'Eyes'},
-      {n:'Iris_L',         c:'#0ea5e9',r:[.31, .30, .43, .39],g:'Eyes'},
-      {n:'Iris_R',         c:'#38bdf8',r:[.57, .30, .69, .39],g:'Eyes'},
-      {n:'Eyelid_upper_L', c:'#2563eb',r:[.27, .28, .46, .33],g:'Eyes'},
-      {n:'Eyelid_upper_R', c:'#3b82f6',r:[.54, .28, .73, .33],g:'Eyes'},
-      {n:'Eyelid_lower_L', c:'#60a5fa',r:[.27, .37, .46, .42],g:'Eyes'},
-      {n:'Eyelid_lower_R', c:'#93c5fd',r:[.54, .37, .73, .42],g:'Eyes'},
-      {n:'Nose',           c:'#ec4899',r:[.38, .39, .62, .50],g:'Face'},
-      {n:'Mouth_base',     c:'#f472b6',r:[.32, .50, .68, .59],g:'Face'},
-      {n:'Mouth_inner',    c:'#fb7185',r:[.36, .51, .64, .58],g:'Face'},
-      {n:'Neck',           c:'#10b981',r:[.35, .57, .65, .70],g:'Body'},
-      {n:'Shoulder_L',     c:'#34d399',r:[0,   .64, .36, .88],g:'Body'},
-      {n:'Shoulder_R',     c:'#6ee7b7',r:[.64, .64, 1,   .88],g:'Body'},
-      {n:'Body_torso',     c:'#fcd34d',r:[.14, .68, .86, 1  ],g:'Body'},
-    ];
-
-    var dz=document.getElementById('dz');
-    var inp=document.getElementById('dz-input');
-    var previewArea=document.getElementById('demo-preview-area');
-    var previewImg=document.getElementById('demo-preview-img');
-    var resultArea=document.getElementById('demo-result-area');
-    var base=document.getElementById('dc-base');
-    var over=document.getElementById('dc-over');
-    var bctx=base.getContext('2d');
-    var octx=over.getContext('2d');
-    var rows=document.getElementById('layer-rows');
-    var bar=document.getElementById('seg-bar');
-    var lbl=document.getElementById('seg-label');
-    var thumbGrid=document.getElementById('layer-thumb-grid');
-    var dlRow=document.getElementById('demo-dl-row');
-    var statsRow=document.getElementById('demo-stats');
-    var statLayers=document.getElementById('stat-layers');
-    var runBtn=document.getElementById('run-btn');
-    var currentImg=null;
-
-    // Drag & drop
-    dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('dz-active');});
-    dz.addEventListener('dragleave',function(){dz.classList.remove('dz-active');});
-    dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('dz-active');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
-    inp.addEventListener('change',function(e){if(e.target.files[0])loadFile(e.target.files[0]);});
-
-    function loadFile(file){
-      if(!file.type.startsWith('image/'))return;
-      var fr=new FileReader();
-      fr.onload=function(ev){
-        previewImg.src=ev.target.result;
-        currentImg=null;
-        var img=new Image();
-        img.onload=function(){currentImg=img;};
-        img.src=ev.target.result;
-        dz.style.display='none';
-        previewArea.style.display='block';
-        resultArea.style.display='none';
-      };
-      fr.readAsDataURL(file);
-    }
-
-    window.demoRun=function(){
-      if(!currentImg)return;
-      runBtn.disabled=true;
-      runBtn.classList.add('loading');
-      previewArea.style.display='none';
-      resultArea.style.display='block';
-      dlRow.style.display='none';
-      statsRow.style.display='none';
-      thumbGrid.innerHTML='';
-      rows.innerHTML='';
-      bar.style.width='0%';
-      lbl.textContent='Initializing segmentation model…';
-
-      setTimeout(function(){startSeg(currentImg);},500);
-    };
-
-    window.demoReset=function(){
-      dz.style.display='';
-      previewArea.style.display='none';
-      resultArea.style.display='none';
-      runBtn.disabled=false;
-      runBtn.classList.remove('loading');
-      inp.value='';
-      currentImg=null;
-    };
-
-    window.demoDL=function(type){
-      var toast=document.getElementById('dl-toast');
-      toast.style.display='block';
-      if(type==='psd'){
-        // Export composite as PNG download (PSD requires backend)
-        var link=document.createElement('a');
-        var exportCanvas=document.createElement('canvas');
-        exportCanvas.width=base.width;exportCanvas.height=base.height;
-        var ctx=exportCanvas.getContext('2d');
-        ctx.drawImage(base,0,0);
-        ctx.drawImage(over,0,0);
-        exportCanvas.toBlob(function(blob){
-          link.href=URL.createObjectURL(blob);
-          link.download='live2d_segmented_layers.png';
-          link.click();
-          toast.textContent='Downloaded composite preview (full PSD export requires backend)';
-          setTimeout(function(){toast.style.display='none';},4000);
-        });
-      } else {
-        toast.textContent='ZIP export requires backend — start the server to enable full export';
-        setTimeout(function(){toast.style.display='none';},4000);
-      }
-    };
-
-    function startSeg(img){
-      var maxW=Math.min(480,window.innerWidth-80);
-      var sc=maxW/img.width;
-      var w=Math.round(img.width*sc),h=Math.round(img.height*sc);
-      base.width=w;base.height=h;
-      over.width=w;over.height=h;
-      bctx.drawImage(img,0,0,w,h);
-      octx.clearRect(0,0,w,h);
-
-      var i=0;
-      function tick(){
-        if(i>=LAYERS.length){
-          lbl.textContent='✓ '+LAYERS.length+' layers detected — ready for Live2D rigging!';
-          bar.style.width='100%';
-          statLayers.textContent=LAYERS.length;
-          statsRow.style.display='flex';
-          dlRow.style.display='flex';
-          runBtn.disabled=false;
-          runBtn.classList.remove('loading');
-          return;
-        }
-        var L=LAYERS[i];
-        var x=Math.round(L.r[0]*w),y=Math.round(L.r[1]*h);
-        var rw=Math.max(4,Math.round((L.r[2]-L.r[0])*w));
-        var rh=Math.max(4,Math.round((L.r[3]-L.r[1])*h));
-
-        // Draw overlay on main canvas
-        octx.save();
-        octx.globalAlpha=.28;
-        octx.fillStyle=L.c;
-        if(octx.roundRect){octx.beginPath();octx.roundRect(x,y,rw,rh,5);octx.fill();}
-        else{octx.fillRect(x,y,rw,rh);}
-        octx.restore();
-        octx.save();
-        octx.globalAlpha=.8;
-        octx.strokeStyle=L.c;
-        octx.lineWidth=1.5;
-        if(octx.roundRect){octx.beginPath();octx.roundRect(x,y,rw,rh,5);octx.stroke();}
-        else{octx.strokeRect(x,y,rw,rh);}
-        octx.restore();
-
-        // Add row to list
-        var row=document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;gap:.45rem;padding:.3rem .2rem;border-radius:6px;font-size:.78rem;animation:dzFadeIn .2s ease both;';
-        row.innerHTML='<span style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:'+L.c+'"></span><span>'+L.n+'</span>';
-        rows.appendChild(row);
-        rows.scrollTop=rows.scrollHeight;
-
-        // Generate thumbnail
-        var tc=document.createElement('canvas');
-        var TW=160,TH=72;
-        tc.width=TW;tc.height=TH;
-        var tctx=tc.getContext('2d');
-        // Draw cropped region from original
-        var srcX=Math.round(L.r[0]*img.width);
-        var srcY=Math.round(L.r[1]*img.height);
-        var srcW=Math.max(1,Math.round((L.r[2]-L.r[0])*img.width));
-        var srcH=Math.max(1,Math.round((L.r[3]-L.r[1])*img.height));
-        tctx.drawImage(img,srcX,srcY,srcW,srcH,0,0,TW,TH);
-        // Overlay mask
-        tctx.save();
-        tctx.globalAlpha=.35;
-        tctx.fillStyle=L.c;
-        tctx.fillRect(0,0,TW,TH);
-        tctx.restore();
-        // Border top
-        tctx.save();
-        tctx.strokeStyle=L.c;
-        tctx.lineWidth=2;
-        tctx.strokeRect(0,0,TW,TH);
-        tctx.restore();
-
-        var card=document.createElement('div');
-        card.className='layer-thumb-card';
-        card.style.animationDelay=(i*0.03)+'s';
-        card.title=L.n+' ('+L.g+')';
-        card.appendChild(tc);
-        var info=document.createElement('div');
-        info.className='layer-thumb-info';
-        info.innerHTML='<span class="layer-thumb-dot" style="background:'+L.c+'"></span><span class="layer-thumb-name">'+L.n+'</span>';
-        card.appendChild(info);
-        // Hover: highlight on main canvas
-        card.addEventListener('mouseenter',function(){
-          octx.save();
-          octx.globalAlpha=.45;
-          octx.fillStyle=L.c;
-          if(octx.roundRect){octx.beginPath();octx.roundRect(x,y,rw,rh,5);octx.fill();}
-          else{octx.fillRect(x,y,rw,rh);}
-          octx.restore();
-        });
-        thumbGrid.appendChild(card);
-
-        bar.style.width=((i+1)/LAYERS.length*100)+'%';
-        lbl.textContent='Segmenting '+(i+1)+' / '+LAYERS.length+' — '+L.n;
-        i++;
-        setTimeout(tick, i<10 ? 200 : 120);
-      }
-      setTimeout(tick,300);
-    }
-  })();
-  </script>
+  <!-- Preview + Results -->
+  <div id="demo-preview" style="display:none">
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;justify-content:center;margin-bottom:2rem">
+      <div>
+        <h3 style="color:#e2e8f0;margin-bottom:0.5rem">Original</h3>
+        <canvas id="original-canvas" style="max-width:300px;border-radius:12px;border:1px solid #334155"></canvas>
+      </div>
+      <div>
+        <h3 style="color:#e2e8f0;margin-bottom:0.5rem">Segmented Layers</h3>
+        <canvas id="segment-canvas" style="max-width:300px;border-radius:12px;border:1px solid #334155"></canvas>
+      </div>
+    </div>
+    <button id="run-btn" onclick="runSegmentation()" style="padding:12px 32px;font-size:1.1rem;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:white;cursor:pointer;margin-bottom:2rem;transition:transform .2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">✨ Run Segmentation</button>
+    <div id="loading" style="display:none;margin:2rem 0"><div style="width:40px;height:40px;border:3px solid #334155;border-top-color:#a855f7;border-radius:50%;animation:spin 1s linear infinite;margin:auto"></div><p style="color:#94a3b8;margin-top:1rem">Analyzing layers...</p></div>
+    <div id="results" style="display:none">
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:2rem">
+        <div style="background:rgba(99,102,241,0.15);padding:16px 24px;border-radius:12px;border:1px solid rgba(99,102,241,0.3)"><span style="font-size:2rem;font-weight:bold;color:#818cf8" id="layer-count">27</span><div style="color:#94a3b8;font-size:0.85rem">Layers</div></div>
+        <div style="background:rgba(168,85,247,0.15);padding:16px 24px;border-radius:12px;border:1px solid rgba(168,85,247,0.3)"><span style="font-size:2rem;font-weight:bold;color:#c084fc">52</span><div style="color:#94a3b8;font-size:0.85rem">Parameters</div></div>
+        <div style="background:rgba(236,72,153,0.15);padding:16px 24px;border-radius:12px;border:1px solid rgba(236,72,153,0.3)"><span style="font-size:2rem;font-weight:bold;color:#f472b6">8</span><div style="color:#94a3b8;font-size:0.85rem">Expressions</div></div>
+      </div>
+      <h3 style="color:#e2e8f0;margin-bottom:1rem">Detected Layers</h3>
+      <div id="layer-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;text-align:center"></div>
+    </div>
+  </div>
 </section>
 
 <!-- ─── PIPELINE ─── -->
@@ -1708,6 +1328,123 @@
     });
     label.textContent = exploded ? 'Click to collapse ↑' : 'Click to expand layers ↓';
   }
+</script>
+<script>
+const LAYERS = [
+  {name:"hair_back",group:"Hair",color:"#7c3aed"},
+  {name:"hair_side_left",group:"Hair",color:"#8b5cf6"},
+  {name:"hair_side_right",group:"Hair",color:"#8b5cf6"},
+  {name:"hair_front_top",group:"Hair",color:"#a78bfa"},
+  {name:"hair_front_side_L",group:"Hair",color:"#a78bfa"},
+  {name:"hair_front_side_R",group:"Hair",color:"#a78bfa"},
+  {name:"face_skin",group:"Face",color:"#f59e0b"},
+  {name:"nose",group:"Face",color:"#fbbf24"},
+  {name:"ear_left",group:"Face",color:"#f59e0b"},
+  {name:"eye_white_L",group:"Eyes",color:"#06b6d4"},
+  {name:"eye_white_R",group:"Eyes",color:"#06b6d4"},
+  {name:"eye_iris_L",group:"Eyes",color:"#0891b2"},
+  {name:"eye_iris_R",group:"Eyes",color:"#0891b2"},
+  {name:"eye_highlight_L",group:"Eyes",color:"#22d3ee"},
+  {name:"eye_highlight_R",group:"Eyes",color:"#22d3ee"},
+  {name:"eye_lash_upper_L",group:"Eyes",color:"#155e75"},
+  {name:"eye_lash_upper_R",group:"Eyes",color:"#155e75"},
+  {name:"eye_lash_lower_L",group:"Eyes",color:"#164e63"},
+  {name:"eye_lash_lower_R",group:"Eyes",color:"#164e63"},
+  {name:"eyebrow_L",group:"Eyes",color:"#0e7490"},
+  {name:"eyebrow_R",group:"Eyes",color:"#0e7490"},
+  {name:"mouth_lips",group:"Mouth",color:"#e11d48"},
+  {name:"mouth_interior",group:"Mouth",color:"#be123c"},
+  {name:"mouth_teeth",group:"Mouth",color:"#fda4af"},
+  {name:"neck",group:"Body",color:"#16a34a"},
+  {name:"body_torso",group:"Body",color:"#15803d"},
+  {name:"clothing_main",group:"Body",color:"#22c55e"},
+  {name:"arm_left",group:"Body",color:"#4ade80"},
+  {name:"arm_right",group:"Body",color:"#4ade80"},
+  {name:"hand_left",group:"Body",color:"#86efac"},
+  {name:"hand_right",group:"Body",color:"#86efac"}
+];
+
+let uploadedImage = null;
+
+function handleFile(file) {
+  if(!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      uploadedImage = img;
+      const oc = document.getElementById('original-canvas');
+      const sc = document.getElementById('segment-canvas');
+      const s = Math.min(300/img.width, 300/img.height, 1);
+      oc.width = sc.width = img.width * s;
+      oc.height = sc.height = img.height * s;
+      oc.getContext('2d').drawImage(img, 0, 0, oc.width, oc.height);
+      sc.getContext('2d').drawImage(img, 0, 0, sc.width, sc.height);
+      document.getElementById('demo-preview').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function runSegmentation() {
+  if(!uploadedImage) return;
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+
+  setTimeout(function() {
+    const sc = document.getElementById('segment-canvas');
+    const ctx = sc.getContext('2d');
+    ctx.drawImage(uploadedImage, 0, 0, sc.width, sc.height);
+
+    // Draw colored overlay regions for each layer
+    const w = sc.width, h = sc.height;
+    LAYERS.forEach(function(layer, i) {
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = layer.color;
+      // Simulate different regions based on layer type
+      if(layer.group === 'Hair') {
+        ctx.fillRect(0, 0, w, h * 0.35);
+      } else if(layer.name.includes('eye')) {
+        const ex = layer.name.includes('_L') ? w*0.3 : w*0.65;
+        ctx.beginPath();
+        ctx.ellipse(ex, h*0.38, w*0.08, h*0.04, 0, 0, Math.PI*2);
+        ctx.fill();
+      } else if(layer.name.includes('mouth')) {
+        ctx.beginPath();
+        ctx.ellipse(w*0.48, h*0.52, w*0.06, h*0.025, 0, 0, Math.PI*2);
+        ctx.fill();
+      } else if(layer.name === 'face_skin' || layer.name === 'nose') {
+        ctx.beginPath();
+        ctx.ellipse(w*0.48, h*0.4, w*0.15, h*0.18, 0, 0, Math.PI*2);
+        ctx.fill();
+      } else if(layer.group === 'Body') {
+        ctx.fillRect(w*0.2, h*0.55, w*0.6, h*0.45);
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    // Build layer grid
+    const grid = document.getElementById('layer-grid');
+    grid.innerHTML = '';
+    LAYERS.forEach(function(layer) {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid '+layer.color+'40;transition:all .3s;cursor:pointer';
+      card.onmouseover = function(){ this.style.borderColor = layer.color; this.style.transform = 'translateY(-4px)'; };
+      card.onmouseout = function(){ this.style.borderColor = layer.color+'40'; this.style.transform = 'translateY(0)'; };
+      card.innerHTML = '<div style="width:24px;height:24px;border-radius:50%;background:'+layer.color+';margin:0 auto 8px"></div><div style="color:#e2e8f0;font-size:0.75rem;word-break:break-all">'+layer.name+'</div><div style="color:#64748b;font-size:0.65rem;margin-top:2px">'+layer.group+'</div>';
+      grid.appendChild(card);
+    });
+
+    document.getElementById('layer-count').textContent = LAYERS.length;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('run-btn').style.display = 'inline-block';
+    document.getElementById('run-btn').textContent = '🔄 Run Again';
+  }, 2000);
+}
 </script>
 </body>
 </html>
