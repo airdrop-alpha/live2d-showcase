@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live2D Auto-Gen — AI-Powered Live2D Model Generator</title>
+  <style>
+    :root {
+      --bg: #050810;
+      --bg2: #0a0f1e;
+      --bg3: #0f1628;
+      --border: rgba(99,102,241,0.2);
+      --purple: #6366f1;
+      --violet: #8b5cf6;
+      --pink: #ec4899;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --card: rgba(15,22,40,0.8);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ─── SCROLL BAR ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--purple); border-radius: 3px; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(5,8,16,0.8);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      padding: 0.5rem 1.25rem; border-radius: 8px; font-size: 0.875rem;
+      font-weight: 600; text-decoration: none; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--purple), var(--violet));
+      color: white; transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 6rem 2rem 4rem;
+      position: relative; overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.35) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.2) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 30% at 10% 60%, rgba(236,72,153,0.15) 0%, transparent 60%);
+    }
+
+    /* Particle canvas */
+    #particles { position: absolute; inset: 0; z-index: 1; }
+
+    .hero-content { position: relative; z-index: 2; max-width: 860px; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.35rem 1rem; border-radius: 999px;
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4);
+      font-size: 0.8rem; color: #a5b4fc; margin-bottom: 1.5rem;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: pulse 2s infinite; }
+
+    h1 {
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      font-weight: 800; line-height: 1.05; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 20%, #a5b4fc 60%, #f0abfc 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.25rem); color: #94a3b8;
+      max-width: 600px; margin: 1.25rem auto 2.5rem;
+      animation: fadeInUp 0.7s ease 0.2s both;
+    }
+
+    .hero-ctas {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      animation: fadeInUp 0.7s ease 0.3s both;
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.875rem 2rem; border-radius: 12px; font-size: 1rem;
+      font-weight: 600; text-decoration: none; cursor: pointer; border: none;
+      background: linear-gradient(135deg, var(--purple), var(--violet));
+      color: white; transition: all 0.2s; box-shadow: 0 0 30px rgba(99,102,241,0.4);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(99,102,241,0.6); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.875rem 2rem; border-radius: 12px; font-size: 1rem;
+      font-weight: 600; text-decoration: none; cursor: pointer;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+      color: var(--text); transition: all 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+
+    .hero-stats {
+      display: flex; gap: 2.5rem; justify-content: center; flex-wrap: wrap;
+      margin-top: 3.5rem;
+      animation: fadeInUp 0.7s ease 0.45s both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .num {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-stat .label { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ─── SECTION BASE ─── */
+    section { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      display: inline-block; font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--purple); margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1rem;
+    }
+    .section-desc { color: #94a3b8; max-width: 560px; font-size: 1.05rem; }
+
+    /* ─── PIPELINE ─── */
+    .pipeline-flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0; margin-top: 3.5rem;
+      position: relative;
+    }
+    .pipeline-flow::before {
+      content: '';
+      position: absolute; top: 48px; left: 12.5%; right: 12.5%; height: 2px;
+      background: linear-gradient(90deg, var(--purple), var(--violet), var(--pink), var(--cyan));
+      z-index: 0;
+    }
+    .pipeline-step {
+      text-align: center; cursor: pointer; padding: 0 1rem;
+      position: relative; z-index: 1;
+    }
+    .step-icon {
+      width: 96px; height: 96px; border-radius: 24px; margin: 0 auto 1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.25rem;
+      border: 2px solid transparent;
+      background: var(--bg3);
+      transition: all 0.3s;
+      position: relative;
+    }
+    .step-icon::before {
+      content: ''; position: absolute; inset: -2px;
+      border-radius: 26px; z-index: -1;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .pipeline-step:hover .step-icon::before,
+    .pipeline-step.active .step-icon::before { opacity: 1; }
+    .pipeline-step:hover .step-icon,
+    .pipeline-step.active .step-icon {
+      background: var(--bg2);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(99,102,241,0.3);
+    }
+    .step-num {
+      position: absolute; top: -8px; right: -8px;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--violet));
+      font-size: 0.7rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      color: white;
+    }
+    .step-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .step-sub { font-size: 0.8rem; color: var(--muted); }
+
+    .step-detail {
+      display: none; grid-column: 1 / -1;
+      background: var(--card);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 1.5rem 2rem; margin-top: 1.5rem;
+      backdrop-filter: blur(8px);
+      animation: fadeInUp 0.3s ease;
+    }
+    .step-detail.open { display: block; }
+    .step-detail h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: #a5b4fc; }
+    .step-detail p { font-size: 0.9rem; color: #94a3b8; line-height: 1.7; }
+    .step-detail ul { margin-top: 0.75rem; padding-left: 1.25rem; }
+    .step-detail ul li { font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.35rem; }
+
+    /* ─── LAYERS ─── */
+    .layer-groups {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .layer-group {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem; backdrop-filter: blur(8px);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .layer-group:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .group-header {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;
+    }
+    .group-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .group-name { font-size: 0.9rem; font-weight: 700; }
+    .group-count {
+      margin-left: auto; font-size: 0.75rem; font-weight: 600;
+      padding: 0.2rem 0.6rem; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+    }
+    .layer-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.8rem; color: #94a3b8;
+      transition: color 0.15s;
+    }
+    .layer-item:last-child { border-bottom: none; }
+    .layer-item:hover { color: var(--text); }
+    .layer-item::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+
+    /* Layer stack animation */
+    .layer-stack-container {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 3rem; margin-bottom: 1rem;
+    }
+    .layer-stack {
+      position: relative; width: 200px; height: 200px;
+      cursor: pointer;
+    }
+    .layer-card {
+      position: absolute; inset: 0;
+      border-radius: 12px; border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 600; color: white;
+      background: var(--card);
+      transition: transform 0.5s cubic-bezier(.34,1.56,.64,1), opacity 0.4s;
+      will-change: transform;
+    }
+    .stack-label {
+      text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 1rem;
+    }
+
+    /* ─── PARAMS / PHYSICS ─── */
+    .params-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .param-group {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(8px);
+    }
+    .param-group-title {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.9rem; font-weight: 700; margin-bottom: 1rem;
+    }
+    .param-icon { font-size: 1.25rem; }
+    .param-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .param-tag {
+      font-size: 0.7rem; padding: 0.25rem 0.6rem; border-radius: 6px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+      color: #a5b4fc;
+    }
+
+    /* Physics pendulums */
+    .physics-section {
+      margin-top: 4rem;
+    }
+    .physics-title {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;
+    }
+    .pendulums {
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .pendulum-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem 1rem;
+      text-align: center; width: 120px;
+      backdrop-filter: blur(8px);
+    }
+    .pendulum-svg { display: block; margin: 0 auto 0.75rem; }
+    .pendulum-name { font-size: 0.72rem; font-weight: 600; color: #a5b4fc; }
+    .pendulum-nodes { font-size: 0.65rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* Expressions grid */
+    .expr-section { margin-top: 4rem; }
+    .expr-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .expr-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+    .expr-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem 0.75rem;
+      text-align: center; backdrop-filter: blur(8px);
+      transition: all 0.25s; cursor: default;
+    }
+    .expr-card:hover {
+      border-color: rgba(99,102,241,0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px rgba(99,102,241,0.2);
+    }
+    .expr-emoji { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+    .expr-name { font-size: 0.75rem; font-weight: 600; }
+
+    /* ─── ARCHITECTURE ─── */
+    .arch-flow {
+      display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+      margin-top: 3rem; justify-content: center;
+    }
+    .arch-node {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem 1.25rem;
+      text-align: center; min-width: 150px;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+    }
+    .arch-node:hover {
+      border-color: rgba(99,102,241,0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+    }
+    .arch-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .arch-name { font-size: 0.875rem; font-weight: 700; }
+    .arch-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+    .arch-arrow {
+      font-size: 1.5rem; color: var(--border); padding: 0 0.5rem;
+    }
+
+    .tech-badges {
+      display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2.5rem;
+    }
+    .badge {
+      padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      transition: all 0.2s;
+    }
+    .badge:hover { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+
+    /* ─── STATS COUNTER ─── */
+    .compare-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .compare-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(8px);
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .compare-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(99,102,241,0.2);
+    }
+    .compare-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, transparent 60%);
+    }
+    .compare-metric { font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+    .compare-row { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .compare-before { font-size: 1.5rem; font-weight: 700; color: var(--muted); }
+    .compare-arrow { color: var(--purple); font-size: 1rem; }
+    .compare-after {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .compare-delta {
+      font-size: 0.72rem; font-weight: 600; color: var(--green);
+      padding: 0.2rem 0.5rem; border-radius: 6px;
+      background: rgba(16,185,129,0.12);
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 4rem 2rem 2.5rem;
+      text-align: center;
+    }
+    .footer-cta-text {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 800; margin-bottom: 1.5rem;
+    }
+    .footer-links {
+      display: flex; gap: 2rem; justify-content: center;
+      flex-wrap: wrap; margin-top: 2.5rem;
+    }
+    .footer-links a {
+      color: var(--muted); text-decoration: none; font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 0.8rem; color: var(--muted); margin-top: 2rem; }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+    @keyframes swingA {
+      0%, 100% { transform: rotate(-18deg); }
+      50%       { transform: rotate(18deg); }
+    }
+    @keyframes swingB {
+      0%, 100% { transform: rotate(-12deg); }
+      50%       { transform: rotate(12deg); }
+    }
+    @keyframes swingC {
+      0%, 100% { transform: rotate(-22deg); }
+      50%       { transform: rotate(22deg); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
+      50%       { box-shadow: 0 0 40px rgba(99,102,241,0.6); }
+    }
+    @keyframes countUp {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Reveal on scroll */
+    .reveal {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ─── DIVIDERS ─── */
+    .section-divider {
+      width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0 auto;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      section { padding: 4rem 1.25rem; }
+      .pipeline-flow {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+      .pipeline-flow::before { display: none; }
+      .arch-flow { gap: 0.5rem; }
+      .arch-arrow { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-logo">⚡ Live2D Auto-Gen</div>
+  <div class="nav-links">
+    <a href="#pipeline">Pipeline</a>
+    <a href="#layers">Layers</a>
+    <a href="#params">Params</a>
+    <a href="#arch">Architecture</a>
+    <a href="#compare">Metrics</a>
+  </div>
+  <a href="/" class="nav-cta">Try Now →</a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<div id="hero">
+  <div class="hero-bg"></div>
+  <canvas id="particles"></canvas>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span></span>
+      AI-Powered · Production Ready · Open Pipeline
+    </div>
+    <h1>Live2D Auto-Gen</h1>
+    <p class="hero-sub">AI-Powered Live2D Model Generator — From Illustration to VTuber in Minutes</p>
+    <div class="hero-ctas">
+      <a href="/" class="btn-primary">
+        🚀 Try Now
+      </a>
+      <a href="#pipeline" class="btn-secondary">
+        ▶ See How It Works
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num" data-target="27">0</div>
+        <div class="label">Segmentation Layers</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-target="52">0</div>
+        <div class="label">Rig Parameters</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-target="7">0</div>
+        <div class="label">Physics Chains</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" data-target="8">0</div>
+        <div class="label">Expressions</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- ─── PIPELINE ─── -->
+<section id="pipeline" class="reveal">
+  <div class="section-label">Step-by-Step</div>
+  <h2>Automated Pipeline</h2>
+  <p class="section-desc">Four intelligent stages transform a single illustration into a fully-rigged, export-ready Live2D model.</p>
+
+  <div class="pipeline-flow">
+    <div class="pipeline-step" onclick="toggleStep(0)">
+      <div class="step-icon">
+        🖼️
+        <div class="step-num">1</div>
+      </div>
+      <div class="step-title">Upload</div>
+      <div class="step-sub">任意插畫</div>
+    </div>
+    <div class="pipeline-step" onclick="toggleStep(1)">
+      <div class="step-icon">
+        🔪
+        <div class="step-num">2</div>
+      </div>
+      <div class="step-title">Segment</div>
+      <div class="step-sub">27 層精細分割</div>
+    </div>
+    <div class="pipeline-step" onclick="toggleStep(2)">
+      <div class="step-icon">
+        🦴
+        <div class="step-num">3</div>
+      </div>
+      <div class="step-title">Rig</div>
+      <div class="step-sub">52 參數 + 7 物理鏈</div>
+    </div>
+    <div class="pipeline-step" onclick="toggleStep(3)">
+      <div class="step-icon">
+        📦
+        <div class="step-num">4</div>
+      </div>
+      <div class="step-title">Export</div>
+      <div class="step-sub">Live2D 模型包</div>
+    </div>
+
+    <div id="step-detail" class="step-detail"></div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── LAYERS ─── -->
+<section id="layers" class="reveal">
+  <div class="section-label">Segmentation Quality</div>
+  <h2>27-Layer Precision</h2>
+  <p class="section-desc">ML-powered segmentation decomposes your illustration into anatomically-correct layers ready for animation.</p>
+
+  <div class="layer-stack-container">
+    <div>
+      <div class="layer-stack" id="layerStack" onclick="explodeLayers()">
+        <!-- generated by JS -->
+      </div>
+      <div class="stack-label" id="stackLabel">Click to expand layers ↓</div>
+    </div>
+  </div>
+
+  <div class="layer-groups">
+    <div class="layer-group reveal" style="border-color: rgba(139,92,246,0.4)">
+      <div class="group-header">
+        <div class="group-dot" style="background:#8b5cf6"></div>
+        <div class="group-name">頭髮系統</div>
+        <div class="group-count">6</div>
+      </div>
+      <div class="layer-item">前髮 (Front Hair)</div>
+      <div class="layer-item">側髮左 (Left Side)</div>
+      <div class="layer-item">側髮右 (Right Side)</div>
+      <div class="layer-item">後髮 (Back Hair)</div>
+      <div class="layer-item">髮尾左 (Tail Left)</div>
+      <div class="layer-item">髮尾右 (Tail Right)</div>
+    </div>
+
+    <div class="layer-group reveal" style="border-color: rgba(6,182,212,0.4)">
+      <div class="group-header">
+        <div class="group-dot" style="background:#06b6d4"></div>
+        <div class="group-name">眼睛系統</div>
+        <div class="group-count">10</div>
+      </div>
+      <div class="layer-item">眼白左 (Eye White L)</div>
+      <div class="layer-item">眼白右 (Eye White R)</div>
+      <div class="layer-item">虹膜左 (Iris L)</div>
+      <div class="layer-item">虹膜右 (Iris R)</div>
+      <div class="layer-item">瞳孔左 (Pupil L)</div>
+      <div class="layer-item">瞳孔右 (Pupil R)</div>
+      <div class="layer-item">上眼皮左 (Lid Upper L)</div>
+      <div class="layer-item">上眼皮右 (Lid Upper R)</div>
+      <div class="layer-item">睫毛左 (Lashes L)</div>
+      <div class="layer-item">睫毛右 (Lashes R)</div>
+    </div>
+
+    <div class="layer-group reveal" style="border-color: rgba(236,72,153,0.4)">
+      <div class="group-header">
+        <div class="group-dot" style="background:#ec4899"></div>
+        <div class="group-name">臉部</div>
+        <div class="group-count">3</div>
+      </div>
+      <div class="layer-item">臉底 (Face Base)</div>
+      <div class="layer-item">眉毛左 (Brow L)</div>
+      <div class="layer-item">眉毛右 (Brow R)</div>
+    </div>
+
+    <div class="layer-group reveal" style="border-color: rgba(245,158,11,0.4)">
+      <div class="group-header">
+        <div class="group-dot" style="background:#f59e0b"></div>
+        <div class="group-name">嘴部</div>
+        <div class="group-count">3</div>
+      </div>
+      <div class="layer-item">嘴形A (Mouth A)</div>
+      <div class="layer-item">嘴形I (Mouth I)</div>
+      <div class="layer-item">閉嘴 (Mouth Closed)</div>
+    </div>
+
+    <div class="layer-group reveal" style="border-color: rgba(16,185,129,0.4)">
+      <div class="group-header">
+        <div class="group-dot" style="background:#10b981"></div>
+        <div class="group-name">身體</div>
+        <div class="group-count">5</div>
+      </div>
+      <div class="layer-item">脖子 (Neck)</div>
+      <div class="layer-item">身體 (Body)</div>
+      <div class="layer-item">左手臂 (Left Arm)</div>
+      <div class="layer-item">右手臂 (Right Arm)</div>
+      <div class="layer-item">衣服 (Clothing)</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── PARAMS + PHYSICS ─── -->
+<section id="params" class="reveal">
+  <div class="section-label">Rigging System</div>
+  <h2>52 Parameters &amp; Physics</h2>
+  <p class="section-desc">Every parameter maps to real Live2D deformation groups, enabling expressive and natural motion.</p>
+
+  <div class="params-grid">
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">🧠</span> 頭部 Head (9)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamAngleX</span>
+        <span class="param-tag">ParamAngleY</span>
+        <span class="param-tag">ParamAngleZ</span>
+        <span class="param-tag">ParamBodyAngleX</span>
+        <span class="param-tag">ParamBodyAngleY</span>
+        <span class="param-tag">ParamBodyAngleZ</span>
+        <span class="param-tag">ParamNeckAngleX</span>
+        <span class="param-tag">ParamNeckAngleY</span>
+        <span class="param-tag">ParamBreath</span>
+      </div>
+    </div>
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">👁️</span> 眼睛 Eyes (12)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamEyeLOpen</span>
+        <span class="param-tag">ParamEyeROpen</span>
+        <span class="param-tag">ParamEyeLSmile</span>
+        <span class="param-tag">ParamEyeRSmile</span>
+        <span class="param-tag">ParamEyeBallX</span>
+        <span class="param-tag">ParamEyeBallY</span>
+        <span class="param-tag">ParamEyeLForm</span>
+        <span class="param-tag">ParamEyeRForm</span>
+        <span class="param-tag">ParamEyeLWink</span>
+        <span class="param-tag">ParamEyeRWink</span>
+        <span class="param-tag">ParamEyeLHighlight</span>
+        <span class="param-tag">ParamEyeRHighlight</span>
+      </div>
+    </div>
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">🤨</span> 眉毛 Brows (6)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamBrowLY</span>
+        <span class="param-tag">ParamBrowRY</span>
+        <span class="param-tag">ParamBrowLX</span>
+        <span class="param-tag">ParamBrowRX</span>
+        <span class="param-tag">ParamBrowLAngle</span>
+        <span class="param-tag">ParamBrowRAngle</span>
+      </div>
+    </div>
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">👄</span> 嘴巴 Mouth (8)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamMouthForm</span>
+        <span class="param-tag">ParamMouthOpenY</span>
+        <span class="param-tag">ParamMouthA</span>
+        <span class="param-tag">ParamMouthI</span>
+        <span class="param-tag">ParamMouthU</span>
+        <span class="param-tag">ParamMouthE</span>
+        <span class="param-tag">ParamMouthO</span>
+        <span class="param-tag">ParamTongue</span>
+      </div>
+    </div>
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">💪</span> 身體 Body (8)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamArmLA</span>
+        <span class="param-tag">ParamArmRA</span>
+        <span class="param-tag">ParamArmLB</span>
+        <span class="param-tag">ParamArmRB</span>
+        <span class="param-tag">ParamHandL</span>
+        <span class="param-tag">ParamHandR</span>
+        <span class="param-tag">ParamTailSwing</span>
+        <span class="param-tag">ParamEarL</span>
+      </div>
+    </div>
+    <div class="param-group">
+      <div class="param-group-title">
+        <span class="param-icon">💇</span> 頭髮 Hair (9)
+      </div>
+      <div class="param-list">
+        <span class="param-tag">ParamHairFront</span>
+        <span class="param-tag">ParamHairBack</span>
+        <span class="param-tag">ParamHairSideL</span>
+        <span class="param-tag">ParamHairSideR</span>
+        <span class="param-tag">ParamHairTailL</span>
+        <span class="param-tag">ParamHairTailR</span>
+        <span class="param-tag">ParamHairFluffy</span>
+        <span class="param-tag">ParamAhoge</span>
+        <span class="param-tag">ParamHairPhysics</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Physics -->
+  <div class="physics-section reveal">
+    <div class="physics-title">⛓️ 7 Physics Chains — 23 Total Nodes</div>
+    <div class="pendulums">
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#6366f1" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingA 1.8s ease-in-out infinite">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#8b5cf6" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#8b5cf6" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="55" stroke="#a78bfa" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#a78bfa" opacity="0.6"/>
+            <line x1="30" y1="55" x2="30" y2="68" stroke="#c4b5fd" stroke-width="1.5"/>
+            <circle cx="30" cy="68" r="3" fill="#c4b5fd" opacity="0.4"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">前髮</div>
+        <div class="pendulum-nodes">3 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#06b6d4" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingB 2.2s ease-in-out infinite 0.3s">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#0891b2" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#0891b2" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="55" stroke="#22d3ee" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#22d3ee" opacity="0.6"/>
+            <line x1="30" y1="55" x2="30" y2="68" stroke="#67e8f9" stroke-width="1.5"/>
+            <circle cx="30" cy="68" r="3" fill="#67e8f9" opacity="0.4"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">側髮左</div>
+        <div class="pendulum-nodes">3 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#06b6d4" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingB 2.2s ease-in-out infinite 0.6s">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#0891b2" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#0891b2" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="55" stroke="#22d3ee" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#22d3ee" opacity="0.6"/>
+            <line x1="30" y1="55" x2="30" y2="68" stroke="#67e8f9" stroke-width="1.5"/>
+            <circle cx="30" cy="68" r="3" fill="#67e8f9" opacity="0.4"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">側髮右</div>
+        <div class="pendulum-nodes">3 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#ec4899" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingC 2.6s ease-in-out infinite 0.1s">
+            <line x1="30" y1="18" x2="30" y2="33" stroke="#db2777" stroke-width="2"/>
+            <circle cx="30" cy="33" r="5" fill="#db2777" opacity="0.8"/>
+            <line x1="30" y1="33" x2="30" y2="48" stroke="#f472b6" stroke-width="2"/>
+            <circle cx="30" cy="48" r="5" fill="#f472b6" opacity="0.7"/>
+            <line x1="30" y1="48" x2="30" y2="60" stroke="#fbcfe8" stroke-width="1.5"/>
+            <circle cx="30" cy="60" r="4" fill="#fbcfe8" opacity="0.5"/>
+            <line x1="30" y1="60" x2="30" y2="68" stroke="#fce7f3" stroke-width="1"/>
+            <circle cx="30" cy="68" r="3" fill="#fce7f3" opacity="0.3"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">後髮</div>
+        <div class="pendulum-nodes">4 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#f59e0b" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingA 1.5s ease-in-out infinite 0.4s">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#d97706" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#d97706" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="55" stroke="#fbbf24" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#fbbf24" opacity="0.6"/>
+            <line x1="30" y1="55" x2="30" y2="68" stroke="#fde68a" stroke-width="1.5"/>
+            <circle cx="30" cy="68" r="3" fill="#fde68a" opacity="0.4"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">髮尾左</div>
+        <div class="pendulum-nodes">3 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#f59e0b" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingA 1.5s ease-in-out infinite 0.9s">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#d97706" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#d97706" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="55" stroke="#fbbf24" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#fbbf24" opacity="0.6"/>
+            <line x1="30" y1="55" x2="30" y2="68" stroke="#fde68a" stroke-width="1.5"/>
+            <circle cx="30" cy="68" r="3" fill="#fde68a" opacity="0.4"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">髮尾右</div>
+        <div class="pendulum-nodes">3 nodes</div>
+      </div>
+      <div class="pendulum-box">
+        <svg class="pendulum-svg" width="60" height="70" viewBox="0 0 60 70">
+          <line x1="30" y1="4" x2="30" y2="18" stroke="#10b981" stroke-width="2"/>
+          <g style="transform-origin:30px 18px; animation: swingB 3s ease-in-out infinite 0.7s">
+            <line x1="30" y1="18" x2="30" y2="38" stroke="#059669" stroke-width="2"/>
+            <circle cx="30" cy="38" r="5" fill="#059669" opacity="0.8"/>
+            <line x1="30" y1="38" x2="30" y2="60" stroke="#34d399" stroke-width="2"/>
+            <circle cx="30" cy="60" r="6" fill="#34d399" opacity="0.6"/>
+          </g>
+        </svg>
+        <div class="pendulum-name">前髮頂</div>
+        <div class="pendulum-nodes">2 nodes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expressions -->
+  <div class="expr-section reveal">
+    <div class="expr-title">😊 8 Expressions</div>
+    <div class="expr-grid">
+      <div class="expr-card">
+        <span class="expr-emoji">😊</span>
+        <div class="expr-name">Happy</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😢</span>
+        <div class="expr-name">Sad</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😠</span>
+        <div class="expr-name">Angry</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😲</span>
+        <div class="expr-name">Surprised</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😰</span>
+        <div class="expr-name">Embarrassed</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😔</span>
+        <div class="expr-name">Worried</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😏</span>
+        <div class="expr-name">Confident</div>
+      </div>
+      <div class="expr-card">
+        <span class="expr-emoji">😌</span>
+        <div class="expr-name">Relaxed</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── ARCHITECTURE ─── -->
+<section id="arch" class="reveal">
+  <div class="section-label">Tech Stack</div>
+  <h2>Architecture</h2>
+  <p class="section-desc">A clean, modular pipeline from browser upload to downloadable model package.</p>
+
+  <div class="arch-flow">
+    <div class="arch-node">
+      <div class="arch-icon">🌐</div>
+      <div class="arch-name">Frontend</div>
+      <div class="arch-sub">React + Vite + Tailwind</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node">
+      <div class="arch-icon">⚡</div>
+      <div class="arch-name">API Layer</div>
+      <div class="arch-sub">FastAPI + REST</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node">
+      <div class="arch-icon">🤖</div>
+      <div class="arch-name">ML Pipeline</div>
+      <div class="arch-sub">PyTorch + Segment</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node">
+      <div class="arch-icon">🦴</div>
+      <div class="arch-name">Rigging Engine</div>
+      <div class="arch-sub">Cubism SDK Compat</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node">
+      <div class="arch-icon">📦</div>
+      <div class="arch-name">Export</div>
+      <div class="arch-sub">Live2D ZIP + PSD</div>
+    </div>
+  </div>
+
+  <div class="tech-badges">
+    <span class="badge">⚡ FastAPI</span>
+    <span class="badge">⚛️ React 19</span>
+    <span class="badge">🔷 TypeScript</span>
+    <span class="badge">🔥 PyTorch</span>
+    <span class="badge">🎨 Cubism SDK</span>
+    <span class="badge">🌊 Tailwind CSS</span>
+    <span class="badge">⚙️ Vite</span>
+    <span class="badge">🐍 Python 3.11+</span>
+    <span class="badge">🐋 Docker</span>
+    <span class="badge">🌐 Cloudflared Tunnel</span>
+    <span class="badge">🖼️ Pillow / OpenCV</span>
+    <span class="badge">📊 NumPy</span>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── COMPARE / COUNTERS ─── -->
+<section id="compare" class="reveal">
+  <div class="section-label">Before vs After</div>
+  <h2>Quantified Improvements</h2>
+  <p class="section-desc">Compared to a typical manual workflow using the default Cubism template.</p>
+
+  <div class="compare-grid">
+    <div class="compare-card reveal">
+      <div class="compare-metric">Segmentation Layers</div>
+      <div class="compare-row">
+        <span class="compare-before">7</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" data-target="27">0</span>
+      </div>
+      <span class="compare-delta">+286%</span>
+    </div>
+    <div class="compare-card reveal">
+      <div class="compare-metric">Rig Parameters</div>
+      <div class="compare-row">
+        <span class="compare-before">17</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" data-target="52">0</span>
+      </div>
+      <span class="compare-delta">+206%</span>
+    </div>
+    <div class="compare-card reveal">
+      <div class="compare-metric">Physics Nodes</div>
+      <div class="compare-row">
+        <span class="compare-before">2</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" data-target="23">0</span>
+      </div>
+      <span class="compare-delta">+1050%</span>
+    </div>
+    <div class="compare-card reveal">
+      <div class="compare-metric">Expressions</div>
+      <div class="compare-row">
+        <span class="compare-before">0</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" data-target="8">0</span>
+      </div>
+      <span class="compare-delta">New!</span>
+    </div>
+    <div class="compare-card reveal">
+      <div class="compare-metric">Mesh Vertices</div>
+      <div class="compare-row">
+        <span class="compare-before">121</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" data-target="500">0</span>
+        <span style="font-size:1rem;font-weight:700;color:#a5b4fc">+</span>
+      </div>
+      <span class="compare-delta">+313%</span>
+    </div>
+    <div class="compare-card reveal">
+      <div class="compare-metric">Setup Time</div>
+      <div class="compare-row">
+        <span class="compare-before">8h</span>
+        <span class="compare-arrow">→</span>
+        <span class="compare-after" style="font-size:1.75rem">~3min</span>
+      </div>
+      <span class="compare-delta">160× faster</span>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-cta-text">
+    Ready to create your<br/>
+    <span style="background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+      Live2D model?
+    </span>
+  </div>
+  <div class="hero-ctas" style="justify-content:center">
+    <a href="/" class="btn-primary">🚀 Get Started Free</a>
+    <a href="https://github.com" class="btn-secondary" target="_blank">⭐ GitHub</a>
+  </div>
+  <div class="footer-links">
+    <a href="#pipeline">Pipeline</a>
+    <a href="#layers">Layers</a>
+    <a href="#params">Parameters</a>
+    <a href="#arch">Architecture</a>
+    <a href="#compare">Metrics</a>
+  </div>
+  <div class="footer-copy">
+    Live2D Auto-Gen · v1.0.0 · Built with AI-powered pipeline
+  </div>
+</footer>
+
+<script>
+  // ── PARTICLES ──
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * 1920, y: Math.random() * 1080,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      o: Math.random() * 0.5 + 0.1,
+    });
+  }
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(99,102,241,${p.o})`;
+      ctx.fill();
+    });
+    // draw lines between close particles
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(99,102,241,${0.08 * (1 - d/120)})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(drawParticles);
+  }
+  drawParticles();
+
+  // ── HERO STAT COUNTERS ──
+  function animateCount(el, target, duration) {
+    const start = performance.now();
+    const update = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ease * target);
+      if (p < 1) requestAnimationFrame(update);
+    };
+    requestAnimationFrame(update);
+  }
+
+  // hero stats fire on page load
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.hero-stat .num[data-target]').forEach(el => {
+      const t = parseInt(el.dataset.target);
+      setTimeout(() => animateCount(el, t, 1800), 600);
+    });
+  });
+
+  // ── SCROLL REVEAL ──
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        // trigger compare counters when they come into view
+        e.target.querySelectorAll('.compare-after[data-target]').forEach(el => {
+          const t = parseInt(el.dataset.target);
+          animateCount(el, t, 1400);
+          delete el.dataset.target; // only once
+        });
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+  // ── PIPELINE STEP DETAILS ──
+  const stepData = [
+    {
+      title: '📤 Upload — 任意插圖',
+      desc: 'Accept PNG/JPG illustrations up to 8K resolution. The system auto-detects character boundaries, background elements, and facial landmark positions before passing to the segmentation model.',
+      bullets: [
+        'Supports PNG, JPG, WebP up to 8192×8192',
+        'Auto-background removal with alpha compositing',
+        'Facial landmark detection (68-point)',
+        'Character bounding-box estimation',
+      ]
+    },
+    {
+      title: '🔪 Segment — 27-Layer Precision Decomposition',
+      desc: 'A fine-tuned semantic segmentation model decomposes the illustration into anatomically meaningful layers. Each layer is exported as a transparent PNG with precise edge anti-aliasing.',
+      bullets: [
+        'U-Net + Transformer hybrid backbone',
+        '27 semantic classes with hierarchical labels',
+        'Sub-pixel edge refinement with Gaussian smoothing',
+        'Automatic overlap handling and occlusion ordering',
+      ]
+    },
+    {
+      title: '🦴 Rig — 52 Parameters + 7 Physics Chains',
+      desc: 'The rigging engine generates a complete deformer hierarchy compatible with Live2D Cubism 4. Physics simulation is configured per hair group using pendulum-chain dynamics.',
+      bullets: [
+        '52 named parameters mapped to Live2D standard set',
+        '7 physics chains with 2–4 nodes each (23 total)',
+        'Automatic warp deformer bounding calculation',
+        '8 facial expression presets generated',
+      ]
+    },
+    {
+      title: '📦 Export — Live2D Model Package',
+      desc: 'Produces a ready-to-import ZIP archive containing the model3.json, cdi3.json, physics3.json, expression JSON files, and all layer PNGs organized in the standard Cubism folder structure.',
+      bullets: [
+        'model3.json with full deformer hierarchy',
+        'physics3.json with per-chain tuning',
+        'exp3.json files for all 8 expressions',
+        'Optional PSD export for manual editing in Cubism Editor',
+      ]
+    }
+  ];
+
+  let activeStep = -1;
+  function toggleStep(i) {
+    const detail = document.getElementById('step-detail');
+    const steps = document.querySelectorAll('.pipeline-step');
+    if (activeStep === i) {
+      activeStep = -1;
+      detail.classList.remove('open');
+      steps.forEach(s => s.classList.remove('active'));
+      return;
+    }
+    activeStep = i;
+    const d = stepData[i];
+    detail.innerHTML = `<h4>${d.title}</h4><p>${d.desc}</p><ul>${d.bullets.map(b=>`<li>${b}</li>`).join('')}</ul>`;
+    detail.classList.add('open');
+    steps.forEach((s, idx) => s.classList.toggle('active', idx === i));
+  }
+
+  // ── LAYER STACK ──
+  const layerColors = ['#6366f1','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10b981','#a855f7','#0ea5e9'];
+  const layerNames  = ['後髮','身體','臉底','白眼L','白眼R','虹膜','上眼皮','嘴形'];
+  const stack = document.getElementById('layerStack');
+  let exploded = false;
+
+  layerNames.forEach((name, i) => {
+    const el = document.createElement('div');
+    el.className = 'layer-card';
+    el.textContent = name;
+    el.style.background = layerColors[i % layerColors.length] + '22';
+    el.style.borderColor = layerColors[i % layerColors.length] + '55';
+    el.style.transform = `translateY(${-i * 2}px) translateX(${i * 1.5}px)`;
+    el.style.zIndex = i;
+    stack.appendChild(el);
+  });
+
+  function explodeLayers() {
+    const cards = stack.querySelectorAll('.layer-card');
+    const label = document.getElementById('stackLabel');
+    exploded = !exploded;
+    cards.forEach((c, i) => {
+      if (exploded) {
+        c.style.transform = `translateY(${-i * 26}px) translateX(0)`;
+        c.style.opacity = '0.9';
+      } else {
+        c.style.transform = `translateY(${-i * 2}px) translateX(${i * 1.5}px)`;
+        c.style.opacity = '1';
+      }
+    });
+    label.textContent = exploded ? 'Click to collapse ↑' : 'Click to expand layers ↓';
+  }
+</script>
+</body>
+</html>
