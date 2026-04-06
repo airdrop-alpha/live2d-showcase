@@ -1388,13 +1388,57 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
+
+const API_URL = 'https://thinkpad-rainbow-immune-reid.trycloudflare.com';
+
+async function runSegmentationReal() {
+  const formData = new FormData();
+  const canvas = document.createElement('canvas');
+  canvas.width = uploadedImage.naturalWidth || uploadedImage.width;
+  canvas.height = uploadedImage.naturalHeight || uploadedImage.height;
+  canvas.getContext('2d').drawImage(uploadedImage, 0, 0);
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  formData.append('file', blob, 'character.png');
+  
+  const upRes = await fetch(API_URL + '/api/upload', {method:'POST', body:formData});
+  if(!upRes.ok) throw new Error('Upload failed');
+  const upData = await upRes.json();
+  
+  const segRes = await fetch(API_URL + '/api/segment/' + upData.job_id, {method:'POST'});
+  if(!segRes.ok) throw new Error('Segment failed');
+  return await segRes.json();
+}
+
 function runSegmentation() {
   if(!uploadedImage) return;
   document.getElementById('run-btn').style.display = 'none';
   document.getElementById('loading').style.display = 'block';
   document.getElementById('results').style.display = 'none';
 
-  setTimeout(function() {
+  
+  // Try real API first
+  runSegmentationReal().then(function(data) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('run-btn').style.display = 'inline-block';
+    document.getElementById('run-btn').textContent = '🔄 Run Again';
+    // Use real layer count
+    var realLayers = data.layers || data.segments || [];
+    if(realLayers.length > 0) {
+      document.getElementById('layer-count').textContent = realLayers.length;
+      var grid = document.getElementById('layer-grid');
+      grid.innerHTML = '';
+      realLayers.forEach(function(l) {
+        var card = document.createElement('div');
+        card.style.cssText = 'background:rgba(30,41,59,0.8);border-radius:10px;padding:12px 8px;border:1px solid #6366f140;transition:all .3s';
+        card.innerHTML = '<div style="color:#e2e8f0;font-size:0.75rem">'+l.name+'</div>';
+        grid.appendChild(card);
+      });
+    }
+  }).catch(function(err) {
+    console.log('API unavailable, using demo mode:', err.message);
+    // Fallback to demo mode
+    setTimeout(function() {
     const sc = document.getElementById('segment-canvas');
     const ctx = sc.getContext('2d');
     ctx.drawImage(uploadedImage, 0, 0, sc.width, sc.height);
