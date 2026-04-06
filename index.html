@@ -507,6 +507,7 @@
   </style>
 <!-- cache-bust: 1775496389.120938 -->
 <!-- cache-bust: 1775496401.90765 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
 </head>
 <body>
 
@@ -613,23 +614,24 @@
     </div><!-- /results -->
 
     <div id="anim-section" style="display:none;margin-top:2rem;text-align:center">
-      <h3 style="color:#e2e8f0;margin-bottom:1rem;font-size:1.3rem">🎭 Live2D Animation Preview</h3>
-      <button id="anim-btn" onclick="startAnimation()" style="padding:12px 28px;font-size:1rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ec4899,#a855f7);color:white;cursor:pointer;margin-bottom:1rem;transition:transform .2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">&#9654; Preview Animation</button>
-      <div>
-        <canvas id="anim-canvas" style="display:none;max-width:400px;width:100%;border-radius:12px;border:1px solid #334155;margin:0 auto;display:block"></canvas>
-      </div>
+      <h3 style="color:#e2e8f0;margin-bottom:1rem;font-size:1.3rem">Live2D Animation Preview</h3>
+      <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:1rem">Real-time mesh deformation powered by PixiJS</p>
+      <button id="anim-btn" onclick="startAnimation()" style="padding:12px 28px;font-size:1rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ec4899,#a855f7);color:white;cursor:pointer;margin-bottom:1rem;transition:transform .2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">&#9654; Start Live2D Preview</button>
+      <div id="anim-container" style="margin:0 auto;border-radius:12px;border:1px solid #334155;overflow:hidden;max-width:400px;background:#0f172a"></div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:1rem">
-        <button class="expr-btn" data-expr="neutral" onclick="setExpression('neutral')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(99,102,241,0.3);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128528; Neutral</button>
-        <button class="expr-btn" data-expr="happy" onclick="setExpression('happy')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128522; Happy</button>
-        <button class="expr-btn" data-expr="sad" onclick="setExpression('sad')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128546; Sad</button>
-        <button class="expr-btn" data-expr="angry" onclick="setExpression('angry')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128544; Angry</button>
-        <button class="expr-btn" data-expr="surprised" onclick="setExpression('surprised')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128562; Surprised</button>
-        <button class="expr-btn" data-expr="shy" onclick="setExpression('shy')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#128563; Shy</button>
-        <button class="expr-btn" data-expr="confused" onclick="setExpression('confused')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#129300; Confused</button>
-        <button class="expr-btn" data-expr="excited" onclick="setExpression('excited')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">&#129321; Excited</button>
+        <button class="expr-btn" data-expr="neutral" onclick="setExpression('neutral')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(99,102,241,0.3);color:#e2e8f0;cursor:pointer;font-size:0.8rem">Neutral</button>
+        <button class="expr-btn" data-expr="happy" onclick="setExpression('happy')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">Happy</button>
+        <button class="expr-btn" data-expr="sad" onclick="setExpression('sad')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">Sad</button>
+        <button class="expr-btn" data-expr="angry" onclick="setExpression('angry')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">Angry</button>
+        <button class="expr-btn" data-expr="surprised" onclick="setExpression('surprised')" style="padding:6px 14px;border:1px solid #33415540;border-radius:8px;background:rgba(30,41,59,0.8);color:#e2e8f0;cursor:pointer;font-size:0.8rem">Surprised</button>
+      </div>
+      <div style="margin-top:0.8rem;display:flex;gap:12px;justify-content:center;align-items:center">
+        <label style="color:#94a3b8;font-size:0.8rem">Head X</label>
+        <input type="range" id="head-x" min="-30" max="30" value="0" style="width:120px" oninput="params.headX=this.value/30">
+        <label style="color:#94a3b8;font-size:0.8rem">Head Y</label>
+        <input type="range" id="head-y" min="-30" max="30" value="0" style="width:120px" oninput="params.headY=this.value/30">
       </div>
     </div>
-  </div>
 </section>
 
 <!-- ─── PIPELINE ─── -->
@@ -1356,330 +1358,322 @@
 </script>
 <script>
 var API_URL = '';
-var LAYERS = [
-  {name:"hair_back",      group:"Hair",  color:"#7c3aed", region:"top"},
-  {name:"hair_side_left", group:"Hair",  color:"#8b5cf6", region:"top"},
-  {name:"hair_side_right",group:"Hair",  color:"#8b5cf6", region:"top"},
-  {name:"hair_front_top", group:"Hair",  color:"#a78bfa", region:"top"},
-  {name:"hair_front_side_L",group:"Hair",color:"#c4b5fd", region:"top"},
-  {name:"hair_front_side_R",group:"Hair",color:"#c4b5fd", region:"top"},
-  {name:"face_skin",      group:"Face",  color:"#f59e0b", region:"mid"},
-  {name:"nose",           group:"Face",  color:"#fbbf24", region:"mid"},
-  {name:"ear_left",       group:"Face",  color:"#f59e0b", region:"mid"},
-  {name:"eye_white_L",    group:"Eyes",  color:"#06b6d4", region:"mid"},
-  {name:"eye_white_R",    group:"Eyes",  color:"#06b6d4", region:"mid"},
-  {name:"eye_iris_L",     group:"Eyes",  color:"#0891b2", region:"mid"},
-  {name:"eye_iris_R",     group:"Eyes",  color:"#0891b2", region:"mid"},
-  {name:"eye_highlight_L",group:"Eyes",  color:"#22d3ee", region:"mid"},
-  {name:"eye_highlight_R",group:"Eyes",  color:"#22d3ee", region:"mid"},
-  {name:"eye_lash_upper_L",group:"Eyes", color:"#155e75", region:"mid"},
-  {name:"eye_lash_upper_R",group:"Eyes", color:"#155e75", region:"mid"},
-  {name:"eye_lash_lower_L",group:"Eyes", color:"#164e63", region:"mid"},
-  {name:"eye_lash_lower_R",group:"Eyes", color:"#164e63", region:"mid"},
-  {name:"eyebrow_L",      group:"Eyes",  color:"#0e7490", region:"mid"},
-  {name:"eyebrow_R",      group:"Eyes",  color:"#0e7490", region:"mid"},
-  {name:"mouth_lips",     group:"Mouth", color:"#e11d48", region:"mid"},
-  {name:"mouth_interior", group:"Mouth", color:"#be123c", region:"mid"},
-  {name:"mouth_teeth",    group:"Mouth", color:"#fda4af", region:"mid"},
-  {name:"neck",           group:"Body",  color:"#16a34a", region:"bottom"},
-  {name:"body_torso",     group:"Body",  color:"#15803d", region:"bottom"},
-  {name:"clothing_main",  group:"Body",  color:"#22c55e", region:"bottom"}
+var LAYERS=[
+{name:"hair_back",group:"Hair",color:"#7c3aed",region:"top",z:0},
+{name:"hair_side_left",group:"Hair",color:"#8b5cf6",region:"top",z:5},
+{name:"hair_side_right",group:"Hair",color:"#8b5cf6",region:"top",z:6},
+{name:"hair_front_top",group:"Hair",color:"#a78bfa",region:"top",z:50},
+{name:"hair_front_side_L",group:"Hair",color:"#c4b5fd",region:"top",z:45},
+{name:"hair_front_side_R",group:"Hair",color:"#c4b5fd",region:"top",z:46},
+{name:"face_skin",group:"Face",color:"#f59e0b",region:"mid",z:20},
+{name:"nose",group:"Face",color:"#fbbf24",region:"mid",z:21},
+{name:"ear_left",group:"Face",color:"#f59e0b",region:"mid",z:19},
+{name:"eye_white_L",group:"Eyes",color:"#06b6d4",region:"mid",z:30},
+{name:"eye_white_R",group:"Eyes",color:"#06b6d4",region:"mid",z:31},
+{name:"eye_iris_L",group:"Eyes",color:"#0891b2",region:"mid",z:32},
+{name:"eye_iris_R",group:"Eyes",color:"#0891b2",region:"mid",z:33},
+{name:"eye_highlight_L",group:"Eyes",color:"#22d3ee",region:"mid",z:36},
+{name:"eye_highlight_R",group:"Eyes",color:"#22d3ee",region:"mid",z:37},
+{name:"eye_lash_upper_L",group:"Eyes",color:"#155e75",region:"mid",z:38},
+{name:"eye_lash_upper_R",group:"Eyes",color:"#155e75",region:"mid",z:39},
+{name:"eye_lash_lower_L",group:"Eyes",color:"#164e63",region:"mid",z:34},
+{name:"eye_lash_lower_R",group:"Eyes",color:"#164e63",region:"mid",z:35},
+{name:"eyebrow_L",group:"Eyes",color:"#0e7490",region:"mid",z:40},
+{name:"eyebrow_R",group:"Eyes",color:"#0e7490",region:"mid",z:41},
+{name:"mouth_lips",group:"Mouth",color:"#e11d48",region:"mid",z:25},
+{name:"mouth_interior",group:"Mouth",color:"#be123c",region:"mid",z:26},
+{name:"mouth_teeth",group:"Mouth",color:"#fda4af",region:"mid",z:27},
+{name:"neck",group:"Body",color:"#16a34a",region:"bottom",z:16},
+{name:"body_torso",group:"Body",color:"#15803d",region:"bottom",z:15},
+{name:"clothing_main",group:"Body",color:"#22c55e",region:"bottom",z:14}
 ];
 
-var uploadedImage = null;
-var animRunning = false;
-var animId = null;
-var currentExpression = "neutral";
-var jobId = null;
+var uploadedImage=null, animRunning=false, pixiApp=null, jobId=null;
+var params={headX:0,headY:0,eyeOpen:1,mouthOpen:0,breath:0};
+var currentExpression='neutral';
 
-function handleFile(file) {
-  if (!file || !file.type.startsWith("image/")) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var img = new Image();
-    img.onload = function() {
-      uploadedImage = img;
-      var oc = document.getElementById("original-canvas");
-      var sc = document.getElementById("segment-canvas");
-      var s = Math.min(350 / img.width, 350 / img.height, 1);
-      oc.width = sc.width = Math.round(img.width * s);
-      oc.height = sc.height = Math.round(img.height * s);
-      oc.getContext("2d").drawImage(img, 0, 0, oc.width, oc.height);
-      sc.getContext("2d").drawImage(img, 0, 0, sc.width, sc.height);
-      document.getElementById("demo-preview").style.display = "block";
-      document.getElementById("run-btn").style.display = "inline-block";
-      document.getElementById("run-btn").textContent = "Run Segmentation";
-      document.getElementById("results").style.display = "none";
-      document.getElementById("anim-section").style.display = "none";
-      stopAnimation();
+function handleFile(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  var r=new FileReader();
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      uploadedImage=img;
+      var oc=document.getElementById('original-canvas');
+      var sc=document.getElementById('segment-canvas');
+      var s=Math.min(350/img.width,350/img.height,1);
+      oc.width=sc.width=Math.round(img.width*s);
+      oc.height=sc.height=Math.round(img.height*s);
+      oc.getContext('2d').drawImage(img,0,0,oc.width,oc.height);
+      sc.getContext('2d').drawImage(img,0,0,sc.width,sc.height);
+      document.getElementById('demo-preview').style.display='block';
+      document.getElementById('run-btn').style.display='inline-block';
+      document.getElementById('run-btn').textContent='\u2728 Run Segmentation';
+      document.getElementById('results').style.display='none';
+      document.getElementById('anim-section').style.display='none';
     };
-    img.src = e.target.result;
+    img.src=e.target.result;
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 
-function runSegmentation() {
-  if (!uploadedImage) return;
-  document.getElementById("run-btn").style.display = "none";
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("results").style.display = "none";
-  document.getElementById("anim-section").style.display = "none";
-  stopAnimation();
-
-  if (API_URL) {
-    var canvas = document.createElement("canvas");
-    canvas.width = uploadedImage.naturalWidth || uploadedImage.width;
-    canvas.height = uploadedImage.naturalHeight || uploadedImage.height;
-    canvas.getContext("2d").drawImage(uploadedImage, 0, 0);
-    canvas.toBlob(function(blob) {
-      var fd = new FormData();
-      fd.append("file", blob, "character.png");
-      fetch(API_URL + "/api/upload", {method:"POST", body:fd})
-        .then(function(r){ return r.json(); })
-        .then(function(d) {
-          jobId = d.job_id;
-          return fetch(API_URL + "/api/segment/" + d.job_id, {method:"POST"});
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(d){ showResults(d.layers || d.segments || null); })
-        .catch(function(e){ console.log("API error, demo mode:", e); showResults(null); });
-    }, "image/png");
-  } else {
-    setTimeout(function(){ showResults(null); }, 600);
-  }
+function runSegmentation(){
+  if(!uploadedImage)return;
+  document.getElementById('run-btn').style.display='none';
+  document.getElementById('loading').style.display='block';
+  document.getElementById('results').style.display='none';
+  document.getElementById('anim-section').style.display='none';
+  if(API_URL){
+    var cv=document.createElement('canvas');
+    cv.width=uploadedImage.naturalWidth||uploadedImage.width;
+    cv.height=uploadedImage.naturalHeight||uploadedImage.height;
+    cv.getContext('2d').drawImage(uploadedImage,0,0);
+    cv.toBlob(function(blob){
+      var fd=new FormData();fd.append('file',blob,'character.png');
+      fetch(API_URL+'/api/upload',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(d){jobId=d.job_id;return fetch(API_URL+'/api/segment/'+d.job_id,{method:'POST'})})
+      .then(function(r){return r.json()})
+      .then(function(d){showResults(d.layers||d.segments||null)})
+      .catch(function(e){console.log('API err:',e);showResults(null)});
+    },'image/png');
+  } else { setTimeout(function(){showResults(null)},500); }
 }
 
-function showResults(realLayers) {
-  var sc = document.getElementById("segment-canvas");
-  var ctx = sc.getContext("2d");
-  var w = sc.width, h = sc.height;
-  ctx.drawImage(uploadedImage, 0, 0, w, h);
-
-  var layers = realLayers || LAYERS;
-  var layerCountEl = document.getElementById("layer-count");
-  layerCountEl.textContent = "0";
-
-  var grid = document.getElementById("layer-grid");
-  grid.innerHTML = "";
-  layers.forEach(function(l, idx) {
-    var c = l.color || LAYERS[idx % LAYERS.length].color;
-    var g = l.group || LAYERS[idx % LAYERS.length].group;
-    var card = document.createElement("div");
-    card.style.cssText = "background:rgba(30,41,59,0.8);border-radius:10px;padding:10px 6px;border:1px solid " + c + "40;transition:all .3s;cursor:pointer;opacity:0";
-    card.innerHTML = "<div style=\"width:20px;height:20px;border-radius:50%;background:" + c + ";margin:0 auto 6px\"></div><div style=\"color:#e2e8f0;font-size:0.7rem\">" + l.name + "</div><div style=\"color:#64748b;font-size:0.6rem;margin-top:2px\">" + g + "</div>";
-    card.onmouseover = function(){ this.style.borderColor = c; this.style.transform = "translateY(-3px)"; };
-    card.onmouseout  = function(){ this.style.borderColor = c + "40"; this.style.transform = "none"; };
+function showResults(realLayers){
+  var sc=document.getElementById('segment-canvas'),ctx=sc.getContext('2d');
+  var w=sc.width,h=sc.height;
+  ctx.drawImage(uploadedImage,0,0,w,h);
+  var layers=realLayers||LAYERS;
+  var cnt=document.getElementById('layer-count');cnt.textContent='0';
+  var grid=document.getElementById('layer-grid');grid.innerHTML='';
+  layers.forEach(function(l,idx){
+    var c=l.color||LAYERS[idx%LAYERS.length].color;
+    var g=l.group||LAYERS[idx%LAYERS.length].group;
+    var card=document.createElement('div');
+    card.style.cssText='background:rgba(30,41,59,0.8);border-radius:10px;padding:10px 6px;border:1px solid '+c+'40;transition:all .3s;cursor:pointer;opacity:0';
+    card.onmouseover=function(){this.style.borderColor=c;this.style.transform='translateY(-3px)'};
+    card.onmouseout=function(){this.style.borderColor=c+'40';this.style.transform='none'};
+    card.innerHTML='<div style="width:20px;height:20px;border-radius:50%;background:'+c+';margin:0 auto 6px"></div><div style="color:#e2e8f0;font-size:0.7rem">'+l.name+'</div><div style="color:#64748b;font-size:0.6rem;margin-top:2px">'+g+'</div>';
     grid.appendChild(card);
   });
-
-  var cards = grid.querySelectorAll("div");
-  var i = 0;
-  function drawNext() {
-    if (i >= layers.length) {
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("results").style.display = "block";
-      document.getElementById("anim-section").style.display = "block";
-      document.getElementById("run-btn").style.display = "inline-block";
-      document.getElementById("run-btn").textContent = "Run Again";
-      setupDownloadButtons();
+  var i=0;
+  function drawNext(){
+    if(i>=layers.length){
+      document.getElementById('loading').style.display='none';
+      document.getElementById('results').style.display='block';
+      document.getElementById('anim-section').style.display='block';
+      document.getElementById('run-btn').style.display='inline-block';
+      document.getElementById('run-btn').textContent='\ud83d\udd04 Run Again';
+      var dlP=document.getElementById('dl-psd'),dlZ=document.getElementById('dl-zip');
+      if(jobId&&API_URL){
+        dlP.disabled=false;dlP.textContent='\ud83d\udcc4 Download PSD';
+        dlP.onclick=function(){window.open(API_URL+'/api/export/'+jobId+'?format=psd','_blank')};
+        dlZ.disabled=false;dlZ.textContent='\ud83d\udce6 Download ZIP';
+        dlZ.onclick=function(){window.open(API_URL+'/api/download/'+jobId,'_blank')};
+      }
       return;
     }
-    var layer = layers[i];
-    var color = layer.color || LAYERS[i % LAYERS.length].color;
-    var region = layer.region || LAYERS[i % LAYERS.length].region;
-
-    // Draw coloured overlay on segment canvas
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = color;
-    if (region === "top") {
-      ctx.fillRect(0, 0, w, h * 0.38);
-    } else if (region === "mid") {
-      ctx.beginPath();
-      ctx.ellipse(w * 0.5, h * 0.42, w * 0.24, h * 0.22, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillRect(w * 0.12, h * 0.55, w * 0.76, h * 0.45);
-    }
-    ctx.globalAlpha = 1;
-    layerCountEl.textContent = String(i + 1);
-
-    // Fade-in card
-    if (cards[i]) {
-      (function(card){ card.style.transition = "opacity .4s, transform .3s"; card.style.opacity = "1"; })(cards[i]);
-    }
-    i++;
-    setTimeout(drawNext, 80);
+    var layer=layers[i];
+    var color=layer.color||LAYERS[i%LAYERS.length].color;
+    var region=layer.region||LAYERS[i%LAYERS.length].region;
+    ctx.globalAlpha=0.18;ctx.fillStyle=color;
+    if(region==='top'){ctx.fillRect(0,0,w,h*0.35)}
+    else if(region==='mid'){ctx.beginPath();ctx.ellipse(w*0.5,h*0.42,w*0.22,h*0.2,0,0,Math.PI*2);ctx.fill()}
+    else{ctx.fillRect(w*0.15,h*0.55,w*0.7,h*0.45)}
+    ctx.globalAlpha=1;
+    cnt.textContent=String(i+1);
+    var cards=grid.children;
+    if(cards[i])cards[i].style.opacity='1';
+    i++;setTimeout(drawNext,80);
   }
   drawNext();
 }
 
-function setupDownloadButtons() {
-  var dlPsd = document.getElementById("dl-psd");
-  var dlZip = document.getElementById("dl-zip");
-  if (jobId && API_URL) {
-    dlPsd.disabled = false;
-    dlPsd.style.color = "#e2e8f0";
-    dlPsd.style.cursor = "pointer";
-    dlPsd.textContent = "Download PSD";
-    dlPsd.onclick = function(){ window.open(API_URL + "/api/export/" + jobId + "?format=psd", "_blank"); };
-    dlZip.disabled = false;
-    dlZip.style.color = "#e2e8f0";
-    dlZip.style.cursor = "pointer";
-    dlZip.textContent = "Download ZIP";
-    dlZip.onclick = function(){ window.open(API_URL + "/api/download/" + jobId, "_blank"); };
+// ===== PIXI.JS LIVE2D-STYLE ANIMATION =====
+function startAnimation(){
+  if(animRunning){stopAnimation();return}
+  if(!uploadedImage)return;
+  animRunning=true;
+  document.getElementById('anim-btn').textContent='\u23f9 Stop Animation';
+  var container=document.getElementById('anim-container');
+  container.innerHTML='';
+  
+  var s=Math.min(400/uploadedImage.width,400/uploadedImage.height,1);
+  var W=Math.round(uploadedImage.width*s);
+  var H=Math.round(uploadedImage.height*s);
+  container.style.width=W+'px';container.style.height=H+'px';
+  
+  // Check if PIXI is available
+  if(typeof PIXI==='undefined'){
+    // Fallback to canvas-based animation
+    canvasAnimation(container,W,H);
+    return;
   }
+  
+  pixiApp=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true});
+  container.appendChild(pixiApp.view);
+  
+  // Create mesh from uploaded image
+  var tex=PIXI.Texture.from(uploadedImage);
+  
+  // Create separate sprite layers for different body parts
+  // Hair layer (top 30%)
+  var hairRect=new PIXI.Rectangle(0,0,uploadedImage.width,uploadedImage.height*0.3);
+  var hairTex=new PIXI.Texture(tex.baseTexture,hairRect);
+  var hairSprite=new PIXI.Sprite(hairTex);
+  hairSprite.scale.set(s);hairSprite.y=0;
+  
+  // Face layer (20%-55%)
+  var faceRect=new PIXI.Rectangle(0,uploadedImage.height*0.2,uploadedImage.width,uploadedImage.height*0.35);
+  var faceTex=new PIXI.Texture(tex.baseTexture,faceRect);
+  var faceSprite=new PIXI.Sprite(faceTex);
+  faceSprite.scale.set(s);faceSprite.y=H*0.2;
+  faceSprite.anchor.set(0.5,0.5);
+  faceSprite.x=W/2;faceSprite.y=H*0.375;
+  
+  // Body layer (50%-100%)
+  var bodyRect=new PIXI.Rectangle(0,uploadedImage.height*0.5,uploadedImage.width,uploadedImage.height*0.5);
+  var bodyTex=new PIXI.Texture(tex.baseTexture,bodyRect);
+  var bodySprite=new PIXI.Sprite(bodyTex);
+  bodySprite.scale.set(s);bodySprite.y=H*0.5;
+  
+  // Full image as background (lowest layer)
+  var bgSprite=new PIXI.Sprite(tex);
+  bgSprite.scale.set(s);bgSprite.alpha=0.3;
+  
+  pixiApp.stage.addChild(bgSprite);
+  pixiApp.stage.addChild(bodySprite);
+  pixiApp.stage.addChild(faceSprite);
+  pixiApp.stage.addChild(hairSprite);
+  
+  var t=0;
+  var blinkTimer=0;
+  var blinkState=0; // 0=open, 1=closing, 2=opening
+  
+  pixiApp.ticker.add(function(){
+    t+=0.016;
+    blinkTimer+=0.016;
+    
+    // Auto blink every 3-5 seconds
+    if(blinkTimer>3.5+Math.random()*1.5&&blinkState===0){blinkState=1;blinkTimer=0}
+    
+    // Expression modifiers
+    var exprEyeScale=1, exprMouthY=0, exprBrowY=0, exprCheek=0;
+    if(currentExpression==='happy'){exprEyeScale=0.7;exprMouthY=-2;exprCheek=1}
+    else if(currentExpression==='sad'){exprEyeScale=0.85;exprMouthY=2;exprBrowY=3}
+    else if(currentExpression==='angry'){exprEyeScale=0.9;exprBrowY=-4}
+    else if(currentExpression==='surprised'){exprEyeScale=1.15;exprMouthY=3}
+    
+    // Breathing
+    var breath=Math.sin(t*1.8)*0.003;
+    bodySprite.scale.set(s*(1+breath),s*(1+breath*0.5));
+    bodySprite.y=H*0.5+Math.sin(t*1.8)*1.5;
+    
+    // Head movement (from sliders + auto idle)
+    var autoX=Math.sin(t*0.4)*0.05;
+    var autoY=Math.sin(t*0.3)*0.03;
+    var hx=(parseFloat(params.headX)||0)+autoX;
+    var hy=(parseFloat(params.headY)||0)+autoY;
+    
+    faceSprite.rotation=hx*0.03;
+    faceSprite.x=W/2+hx*8;
+    faceSprite.y=H*0.375+hy*5+exprMouthY*0.5;
+    
+    // Face scale for blink effect
+    if(blinkState===1){
+      faceSprite.scale.set(s,s*Math.max(0.97,1-blinkTimer*3));
+      if(blinkTimer>0.08){blinkState=2;blinkTimer=0}
+    }else if(blinkState===2){
+      faceSprite.scale.set(s,s*Math.min(1,0.97+blinkTimer*3));
+      if(blinkTimer>0.08){blinkState=0;blinkTimer=0}
+    }else{
+      faceSprite.scale.set(s,s*exprEyeScale);
+    }
+    
+    // Hair sway - pendulum physics simulation
+    var windForce=Math.sin(t*1.2)*0.8+Math.sin(t*2.3)*0.3;
+    var headInfluence=hx*5;
+    hairSprite.x=windForce*3+headInfluence*0.5;
+    hairSprite.y=-Math.abs(windForce)*0.5;
+    hairSprite.skew.set(windForce*0.015+hx*0.02,0);
+    hairSprite.rotation=hx*0.015;
+  });
 }
 
-// ── ANIMATION ──
-function startAnimation() {
-  if (!uploadedImage) return;
-  if (animRunning) { stopAnimation(); return; }
-  animRunning = true;
-  document.getElementById("anim-btn").textContent = "Stop Animation";
-
-  var canvas = document.getElementById("anim-canvas");
-  canvas.style.display = "block";
-  var s = Math.min(400 / uploadedImage.width, 400 / uploadedImage.height, 1);
-  canvas.width  = Math.round(uploadedImage.width  * s);
-  canvas.height = Math.round(uploadedImage.height * s);
-  var ctx = canvas.getContext("2d");
-  var t = 0;
-
-  function frame() {
-    if (!animRunning) return;
-    t += 0.03;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    var w = canvas.width, h = canvas.height;
-
-    // body breathing
-    var breathY = Math.sin(t * 1.2) * 2;
+function canvasAnimation(container,W,H){
+  // Fallback canvas animation if PIXI not loaded
+  var cv=document.createElement('canvas');
+  cv.width=W;cv.height=H;cv.style.borderRadius='12px';
+  container.appendChild(cv);
+  var ctx=cv.getContext('2d');
+  var t=0;var blinkT=0;
+  
+  function frame(){
+    if(!animRunning)return;
+    t+=0.016;blinkT+=0.016;
+    ctx.clearRect(0,0,W,H);
+    
+    var breath=Math.sin(t*1.8)*2;
+    var hairSway=Math.sin(t*1.2)*4+Math.sin(t*2.3)*1.5;
+    var headX=(parseFloat(params.headX)||0)*8+Math.sin(t*0.4)*2;
+    var headY=(parseFloat(params.headY)||0)*5+Math.sin(t*0.3)*1;
+    var blink=(blinkT%4>3.7&&blinkT%4<3.85)?0.1:1;
+    
+    // Body with breathing
     ctx.save();
-    ctx.translate(0, breathY);
-    ctx.drawImage(uploadedImage, 0, uploadedImage.height * 0.55, uploadedImage.width, uploadedImage.height * 0.45,
-                  0, h * 0.55, w, h * 0.45);
+    ctx.translate(0,breath);
+    ctx.drawImage(uploadedImage,0,uploadedImage.height*0.5,uploadedImage.width,uploadedImage.height*0.5,0,H*0.5,W,H*0.5);
     ctx.restore();
-
-    // face slight head tilt
-    var headTilt = Math.sin(t * 0.7) * 1.5;
+    
+    // Face with head movement
     ctx.save();
-    ctx.translate(w / 2, h * 0.4);
-    ctx.rotate(headTilt * Math.PI / 180);
-    ctx.translate(-w / 2, -h * 0.4);
-    ctx.drawImage(uploadedImage, 0, uploadedImage.height * 0.2, uploadedImage.width, uploadedImage.height * 0.38,
-                  0, h * 0.2, w, h * 0.38);
+    ctx.translate(W/2+headX,H*0.375+headY);
+    ctx.rotate(headX*0.003);
+    ctx.scale(1,blink<1?0.97:1);
+    ctx.drawImage(uploadedImage,0,uploadedImage.height*0.2,uploadedImage.width,uploadedImage.height*0.35,-W/2,-(H*0.35)/2,W,H*0.35);
     ctx.restore();
-
-    // hair sway (sine)
-    var hairSway = Math.sin(t * 1.5) * 5;
+    
+    // Hair with sway
     ctx.save();
-    ctx.translate(hairSway, 0);
-    ctx.drawImage(uploadedImage, 0, 0, uploadedImage.width, uploadedImage.height * 0.28,
-                  0, 0, w, h * 0.28);
+    ctx.translate(hairSway,0);
+    ctx.transform(1,0,hairSway*0.003,1,0,0);
+    ctx.drawImage(uploadedImage,0,0,uploadedImage.width,uploadedImage.height*0.3,0,0,W,H*0.3);
     ctx.restore();
-
-    // blink overlay
-    var blinkPhase = (t % (Math.PI * 2));
-    if (blinkPhase > 5.5 && blinkPhase < 5.85) {
-      ctx.fillStyle = "rgba(0,0,0,0.28)";
-      ctx.beginPath(); ctx.ellipse(w*0.37, h*0.38, w*0.055, h*0.012, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(w*0.63, h*0.38, w*0.055, h*0.012, 0, 0, Math.PI*2); ctx.fill();
-    }
-
-    applyExpression(ctx, w, h, t);
-    animId = requestAnimationFrame(frame);
+    
+    requestAnimationFrame(frame);
   }
   frame();
 }
 
-function stopAnimation() {
-  animRunning = false;
-  if (animId) { cancelAnimationFrame(animId); animId = null; }
-  var btn = document.getElementById("anim-btn");
-  if (btn) btn.textContent = "Preview Animation";
+function stopAnimation(){
+  animRunning=false;
+  if(pixiApp){pixiApp.destroy(true);pixiApp=null}
+  document.getElementById('anim-btn').textContent='\u25b6 Start Live2D Preview';
+  document.getElementById('anim-container').innerHTML='';
 }
 
-function applyExpression(ctx, w, h, t) {
-  if (currentExpression === "neutral") return;
-  ctx.globalAlpha = 0.35;
-  switch (currentExpression) {
-    case "happy":
-      ctx.fillStyle = "#fda4af";
-      ctx.beginPath(); ctx.ellipse(w*0.28, h*0.46, w*0.045, h*0.032, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(w*0.72, h*0.46, w*0.045, h*0.032, 0, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = "#f472b6"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(w*0.5, h*0.5, w*0.04, 0.1, Math.PI-0.1); ctx.stroke();
-      break;
-    case "sad":
-      ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.6;
-      ctx.beginPath(); ctx.moveTo(w*0.43, h*0.54); ctx.quadraticCurveTo(w*0.5, h*0.58, w*0.57, h*0.54); ctx.stroke();
-      ctx.fillStyle = "#93c5fd"; ctx.globalAlpha = 0.3;
-      ctx.beginPath(); ctx.ellipse(w*0.38, h*0.31, w*0.04, h*0.01, -0.3, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(w*0.62, h*0.31, w*0.04, h*0.01, 0.3, 0, Math.PI*2); ctx.fill();
-      break;
-    case "angry":
-      ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.7;
-      ctx.beginPath(); ctx.moveTo(w*0.28, h*0.30); ctx.lineTo(w*0.42, h*0.34); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(w*0.72, h*0.30); ctx.lineTo(w*0.58, h*0.34); ctx.stroke();
-      ctx.strokeStyle = "#fca5a5"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.4;
-      ctx.beginPath(); ctx.moveTo(w*0.43, h*0.54); ctx.lineTo(w*0.57, h*0.54); ctx.stroke();
-      break;
-    case "surprised":
-      ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2; ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.ellipse(w*0.5, h*0.52, w*0.035, h*0.028, 0, 0, Math.PI*2); ctx.stroke();
-      ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.4;
-      ctx.beginPath(); ctx.moveTo(w*0.28, h*0.28); ctx.lineTo(w*0.42, h*0.31); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(w*0.72, h*0.28); ctx.lineTo(w*0.58, h*0.31); ctx.stroke();
-      break;
-    case "shy":
-      ctx.fillStyle = "#fb7185"; ctx.globalAlpha = 0.25;
-      ctx.beginPath(); ctx.ellipse(w*0.26, h*0.44, w*0.07, h*0.04, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(w*0.74, h*0.44, w*0.07, h*0.04, 0, 0, Math.PI*2); ctx.fill();
-      ctx.strokeStyle = "#fda4af"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.arc(w*0.5, h*0.49, w*0.025, 0.2, Math.PI-0.2); ctx.stroke();
-      break;
-    case "confused":
-      ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
-      ctx.beginPath(); ctx.moveTo(w*0.28, h*0.31); ctx.quadraticCurveTo(w*0.35, h*0.27, w*0.42, h*0.32); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(w*0.58, h*0.32); ctx.lineTo(w*0.72, h*0.31); ctx.stroke();
-      ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.arc(w*0.5, h*0.52, w*0.025, 0.3, Math.PI*1.7); ctx.stroke();
-      break;
-    case "excited":
-      var pulse = 1 + Math.sin(t * 6) * 0.05;
-      ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.6;
-      ctx.beginPath(); ctx.arc(w*0.5, h*0.52, w*0.04 * pulse, 0, Math.PI); ctx.stroke();
-      ctx.fillStyle = "#fef08a"; ctx.globalAlpha = 0.2;
-      ctx.beginPath(); ctx.ellipse(w*0.5, h*0.4, w*0.25*pulse, h*0.2*pulse, 0, 0, Math.PI*2); ctx.fill();
-      break;
-  }
-  ctx.globalAlpha = 1;
+function setExpression(expr){
+  currentExpression=expr;
+  document.querySelectorAll('.expr-btn').forEach(function(b){b.style.background='rgba(30,41,59,0.8)'});
+  var a=document.querySelector('[data-expr="'+expr+'"]');
+  if(a)a.style.background='rgba(99,102,241,0.3)';
 }
 
-function setExpression(expr) {
-  currentExpression = expr;
-  document.querySelectorAll(".expr-btn").forEach(function(b){ b.style.background = "rgba(30,41,59,0.8)"; });
-  var active = document.querySelector("[data-expr=\"" + expr + "\"]");
-  if (active) active.style.background = "rgba(99,102,241,0.3)";
-}
-
-// scroll counter
-var counted = false;
-window.addEventListener("scroll", function() {
-  if (counted) return;
-  var el = document.getElementById("compare");
-  if (!el) return;
-  if (el.getBoundingClientRect().top < window.innerHeight * 0.85) {
-    counted = true;
-    document.querySelectorAll(".count-up").forEach(function(el) {
-      var target = parseInt(el.getAttribute("data-target"));
-      var startTime = null;
-      function step(ts) {
-        if (!startTime) startTime = ts;
-        var p = Math.min((ts - startTime) / 1500, 1);
-        el.textContent = Math.floor(p * target);
-        if (p < 1) requestAnimationFrame(step);
-        else el.textContent = target;
+var counted=false;
+window.addEventListener('scroll',function(){
+  if(counted)return;
+  var el=document.getElementById('compare');
+  if(!el)return;
+  if(el.getBoundingClientRect().top<window.innerHeight*0.8){
+    counted=true;
+    document.querySelectorAll('.count-up').forEach(function(el){
+      var target=parseInt(el.getAttribute('data-target'));
+      var start=performance.now();
+      function step(ts){
+        var p=Math.min((ts-start)/1500,1);
+        el.textContent=Math.floor(p*target);
+        if(p<1)requestAnimationFrame(step);else el.textContent=target;
       }
       requestAnimationFrame(step);
     });
