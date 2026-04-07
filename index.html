@@ -1368,20 +1368,13 @@
   }
 </script>
 <script>
-var API_URL='https://incurred-drinking-popular-operate.trycloudflare.com';
+var API_URL='https://metabolism-remarks-fda-oil.trycloudflare.com';
 var uploadedImage=null,jobId=null,pollTimer=null;
 var animRunning=false,pixiApp=null;
 var params={headX:0,headY:0};
 var currentExpression='neutral';
 var mouseX=0.5,mouseY=0.5;
 var realLayers=null;
-
-function SpringNode(x,y){this.x=x;this.y=y;this.vx=0;this.vy=0;this.restX=x;this.restY=y}
-SpringNode.prototype.update=function(dt,stiff,damp,gy,wx){
-  var fx=(this.restX-this.x)*stiff-this.vx*damp+wx;
-  var fy=(this.restY-this.y)*stiff-this.vy*damp+gy;
-  this.vx+=fx*dt;this.vy+=fy*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;
-};
 
 function handleFile(f){
   if(!f||!f.type.startsWith('image/'))return;
@@ -1550,82 +1543,63 @@ function loadRealLayers(W,H,s){
 }
 
 function setupRealLayerAnimation(sprites,W,H,s){
-  var hairSprings=[];
+  var hairInertia={x:0,vx:0};
+  var eyeMasks=[];
   sprites.forEach(function(sp){
-    if(sp._category==='hairFront'||sp._category==='hairBack'){
-      var nodes=[];
-      for(var i=0;i<4;i++)nodes.push(new SpringNode(W/2,i*(H*0.08)));
-      hairSprings.push({sprite:sp,chain:nodes,stiff:sp._category==='hairFront'?7:5,damp:0.8});
-    }
+    if(sp._category!=='eyes')return;
+    var gfx=new PIXI.Graphics();
+    pixiApp.stage.addChild(gfx);
+    sp.mask=gfx;
+    eyeMasks.push({sp:sp,gfx:gfx});
   });
-  
-  var t=0,blinkV=1,blinkPhase=0,nextBlink=3;
-  var exprP={eyeS:1,browY:0,mouthC:0};
-  
+  var t=0,blinkV=1,blinkPhase=0,nextBlink=2+Math.random()*3,isBlinking=false;
+  var exprP={eyeS:1,browY:0,mouthC:0,mouthOpenY:0};
   pixiApp.ticker.add(function(delta){
     var dt=delta/60;t+=dt;blinkPhase+=dt;
-    
-    if(blinkPhase>=nextBlink&&blinkV>=0.99){blinkV=0;blinkPhase=0;nextBlink=2.5+Math.random()*3}
-    if(blinkV<1)blinkV=Math.min(1,blinkV+dt*8);
-    
-    var hx=(mouseX-0.5)*2+(parseFloat(params.headX)||0)+Math.sin(t*0.4)*0.06;
-    var hy=(mouseY-0.5)*2+(parseFloat(params.headY)||0)+Math.sin(t*0.3)*0.04;
+    if(!isBlinking&&blinkPhase>=nextBlink){isBlinking=true;blinkV=0;setTimeout(function(){blinkV=1;isBlinking=false;blinkPhase=0;nextBlink=2+Math.random()*3},120)}
+    if(blinkV<1&&!isBlinking)blinkV=Math.min(1,blinkV+dt*12);
+    var hx=(mouseX-0.5)*2+Math.sin(t*0.4)*0.06;
+    var hy=(mouseY-0.5)*2+Math.sin(t*0.3)*0.04;
     hx=Math.max(-1,Math.min(1,hx));hy=Math.max(-1,Math.min(1,hy));
-    
-    if(currentExpression==='happy'){exprP.eyeS=0.75;exprP.mouthC=0.4}
-    else if(currentExpression==='sad'){exprP.eyeS=0.85;exprP.browY=3}
-    else if(currentExpression==='angry'){exprP.eyeS=0.9;exprP.browY=-3}
-    else if(currentExpression==='surprised'){exprP.eyeS=1.2;exprP.mouthC=-0.3}
-    else{exprP.eyeS=1;exprP.browY=0;exprP.mouthC=0}
-    
-    var wind=Math.sin(t*1.3)*1.5+Math.sin(t*2.7)*0.5;
-    var breath=Math.sin(t*1.8);
-    
-    hairSprings.forEach(function(hs){
-      hs.chain.forEach(function(n,i){
-        var inf=(i+1)/hs.chain.length;
-        n.update(dt,hs.stiff,hs.damp,1.5*inf,(wind+hx*3)*inf);
-      });
+    if(currentExpression==='happy'){exprP.eyeS=0.55;exprP.browY=-H*0.03;exprP.mouthC=1.0;exprP.mouthOpenY=0.35}
+    else if(currentExpression==='sad'){exprP.eyeS=0.45;exprP.browY=H*0.025;exprP.mouthC=-0.9;exprP.mouthOpenY=0}
+    else if(currentExpression==='angry'){exprP.eyeS=0.75;exprP.browY=H*0.03;exprP.mouthC=-0.6;exprP.mouthOpenY=0.1}
+    else if(currentExpression==='surprised'){exprP.eyeS=1.5;exprP.browY=-H*0.03;exprP.mouthC=0;exprP.mouthOpenY=0.85}
+    else{exprP.eyeS=1;exprP.browY=0;exprP.mouthC=0;exprP.mouthOpenY=0}
+    var wind=Math.sin(t*1.6)*2.5+Math.sin(t*0.9)*1.2;
+    var breath=(Math.sin(t*2.5)+1)/2;
+    var hairTarget=hx*27;
+    hairInertia.vx+=((hairTarget-hairInertia.x)*4-hairInertia.vx*3)*dt;
+    hairInertia.x+=hairInertia.vx*dt;
+    var hairSwing=(hairInertia.x+wind)/30;
+    var eyeOpen=Math.max(0,Math.min(1,blinkV*Math.min(1,exprP.eyeS)));
+    eyeMasks.forEach(function(em){
+      var sp=em.sp,gfx=em.gfx,th=sp.texture.height*s;
+      var irisDrop=(1-eyeOpen)*th*0.12;
+      sp.x=sp._origX+hx*7;sp.y=sp._origY+hy*4+irisDrop;sp.rotation=hx*0.02;
+      gfx.clear();gfx.beginFill(0xFFFFFF);
+      gfx.drawRect(-W,sp.y+th*(1-eyeOpen),W*3,th*eyeOpen+4);gfx.endFill();
     });
-    
     sprites.forEach(function(sp){
       var cat=sp._category;
-      sp.x=sp._origX;sp.y=sp._origY;
-      sp.rotation=0;sp.scale.set(s);sp.skew.set(0,0);
-      
-      if(cat==='hairFront'||cat==='hairBack'){
-        var hs=hairSprings.find(function(h){return h.sprite===sp});
-        if(hs&&hs.chain.length>0){
-          var lastN=hs.chain[hs.chain.length-1];
-          sp.x+=(lastN.x-lastN.restX)*0.8;
-          sp.skew.x=(lastN.x-lastN.restX)*0.004;
-        }
-        sp.x+=hx*4;sp.rotation=hx*0.015;
-      }
-      else if(cat==='face'||cat==='neck'){
-        sp.x+=hx*6;sp.y+=hy*4+breath*1;
+      if(cat==='eyes')return;
+      sp.x=sp._origX;sp.y=sp._origY;sp.rotation=0;sp.scale.set(s);sp.skew.set(0,0);
+      if(cat==='hairFront'){
+        sp.x+=hairSwing*H*0.04+hx*4;sp.skew.x=hairSwing*0.06;sp.rotation=hx*0.015;
+      }else if(cat==='hairBack'){
+        sp.x+=hairSwing*H*0.025+hx*3;sp.skew.x=hairSwing*0.04;sp.rotation=hx*0.01;
+      }else if(cat==='face'||cat==='neck'){
+        sp.x+=hx*6;sp.y+=hy*4+breath*2;sp.rotation=hx*0.02;
+      }else if(cat==='brows'){
+        sp.x+=hx*6;sp.y+=hy*3+exprP.browY;sp.rotation=hx*0.02;
+      }else if(cat==='mouth'){
+        sp.x+=hx*5;sp.y+=hy*5-exprP.mouthC*5;
+        sp.scale.set(s*(1+Math.abs(exprP.mouthC)*0.12),s*(1+exprP.mouthOpenY*0.4));
         sp.rotation=hx*0.02;
-      }
-      else if(cat==='eyes'){
-        sp.x+=hx*7;sp.y+=hy*4;
-        sp.scale.set(s,s*blinkV*exprP.eyeS);
-        sp.rotation=hx*0.02;
-      }
-      else if(cat==='brows'){
-        sp.x+=hx*6;sp.y+=hy*3+exprP.browY;
-        sp.rotation=hx*0.02;
-      }
-      else if(cat==='mouth'){
-        sp.x+=hx*5;sp.y+=hy*5+exprP.mouthC*3;
-        sp.scale.set(s*(1+exprP.mouthC*0.1),s);
-        sp.rotation=hx*0.02;
-      }
-      else if(cat==='clothing'){
+      }else if(cat==='clothing'){
+        sp.x+=hx*2;sp.y+=breath*2;sp.scale.set(s*(1+breath*0.003),s);
+      }else{
         sp.x+=hx*2;sp.y+=breath*1.5;
-        sp.scale.set(s*(1+breath*0.002),s);
-      }
-      else{
-        sp.x+=hx*2;sp.y+=breath*1;
       }
     });
   });
