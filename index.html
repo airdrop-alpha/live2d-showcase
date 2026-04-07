@@ -572,6 +572,11 @@
   <h2 style="font-size:2.5rem;margin-bottom:1rem;background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Live Demo</h2>
   <p style="color:#94a3b8;margin-bottom:2rem">Upload a character illustration and watch the AI segment it into 27+ layers</p>
 
+  <!-- Offline Banner -->
+  <div id="offline-banner" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:16px 24px;margin-bottom:1.5rem;color:#fca5a5;font-size:0.9rem">
+    <strong>Backend server is offline.</strong> Start the server locally to use the full pipeline:<br>
+    <code style="display:block;background:rgba(0,0,0,0.3);border-radius:6px;padding:8px 12px;margin-top:8px;color:#7dd3fc;font-size:0.8rem">cd backend &amp;&amp; uvicorn app.main:app --port 8002</code>
+  </div>
   <!-- Upload Area -->
   <div id="upload-area" onclick="document.getElementById('file-input').click()"
        style="border:2px dashed #6366f1;border-radius:16px;padding:60px 40px;cursor:pointer;transition:all .3s;background:rgba(99,102,241,0.05);margin-bottom:2rem"
@@ -597,6 +602,12 @@
       </div>
     </div>
     <button id="run-btn" onclick="runSegmentation()" style="padding:12px 32px;font-size:1.1rem;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:white;cursor:pointer;margin-bottom:2rem;transition:transform .2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">✨ Generate VTuber Model</button>
+    <div id="progress-bar" style="display:none;margin:1.5rem auto;max-width:500px">
+      <div style="background:#1e293b;border-radius:8px;height:10px;overflow:hidden;margin-bottom:0.6rem;border:1px solid #334155">
+        <div id="prog-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a855f7,#ec4899);width:0%;transition:width 0.5s ease;border-radius:8px"></div>
+      </div>
+      <div id="prog-text" style="color:#94a3b8;font-size:0.85rem;font-family:monospace">0% - Starting...</div>
+    </div>
     <div id="loading" style="display:none;margin:2rem 0"><div style="width:40px;height:40px;border:3px solid #334155;border-top-color:#a855f7;border-radius:50%;animation:spin 1s linear infinite;margin:auto"></div><p style="color:#94a3b8;margin-top:1rem">Analyzing layers...</p></div>
     <div id="results" style="display:none">
       <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:2rem">
@@ -609,7 +620,7 @@
 
       <div style="margin-top:2rem;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
         <button id="dl-psd" disabled style="padding:10px 20px;border:1px solid #6366f140;border-radius:10px;background:rgba(30,41,59,0.8);color:#94a3b8;cursor:not-allowed;font-size:0.9rem">📄 Download PSD (requires backend)</button>
-        <button id="dl-zip" disabled style="padding:10px 20px;border:1px solid #6366f140;border-radius:10px;background:rgba(30,41,59,0.8);color:#94a3b8;cursor:not-allowed;font-size:0.9rem">📦 Download ZIP (requires backend)</button>
+        <button id="dl-zip" disabled style="padding:14px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#94a3b830;cursor:not-allowed;font-size:1rem;font-weight:600;opacity:0.5;transition:all .2s">📦 Download for VTube Studio (.zip)</button>
       </div>
     </div><!-- /results -->
 
@@ -1357,7 +1368,11 @@
   }
 </script>
 <script>
-var API_URL='https://metabolism-remarks-fda-oil.trycloudflare.com';
+var API_URL='https://stamp-tablet-nutten-random.trycloudflare.com';
+// Check if backend is online
+fetch(API_URL+'/api/health').then(function(r){
+  if(!r.ok) document.getElementById('offline-banner').style.display='block';
+}).catch(function(){ document.getElementById('offline-banner').style.display='block'; });
 var uploadedImage=null,jobId=null,pollTimer=null;
 
 function handleFile(f){
