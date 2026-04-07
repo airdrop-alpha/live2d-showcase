@@ -1462,7 +1462,7 @@ function updateProgress(pct,msg){
 
 function showFinalResults(data){
   document.getElementById('progress-bar').style.display='none';
-  document.getElementById('results').style.display='block';
+  document.getElementById('results').style.display='block';try{document.getElementById('anim-section').style.display='block'}catch(e){};
   document.getElementById('layer-count').textContent=data.layer_count||0;
   var grid=document.getElementById('layer-grid');
   grid.innerHTML='';
@@ -1509,6 +1509,69 @@ window.addEventListener('scroll',function(){
     });
   }
 });
+
+
+var animRunning=false,pixiApp=null;
+var params={headX:0,headY:0};
+var currentExpression='neutral';
+
+function startAnimation(){
+  if(animRunning){stopAnimation();return}
+  if(!uploadedImage)return;
+  animRunning=true;
+  document.getElementById('anim-btn').textContent='\u23f9 Stop';
+  var container=document.getElementById('anim-container');
+  container.innerHTML='';
+  var s=Math.min(380/uploadedImage.width,380/uploadedImage.height,1);
+  var W=Math.round(uploadedImage.width*s),H=Math.round(uploadedImage.height*s);
+  container.style.width=W+'px';container.style.height=H+'px';
+  
+  if(typeof PIXI!=='undefined'){
+    pixiApp=new PIXI.Application({width:W,height:H,backgroundAlpha:0,antialias:true});
+    container.appendChild(pixiApp.view);
+    var tex=PIXI.Texture.from(uploadedImage);
+    var hairTex=new PIXI.Texture(tex.baseTexture,new PIXI.Rectangle(0,0,uploadedImage.width,uploadedImage.height*0.3));
+    var faceTex=new PIXI.Texture(tex.baseTexture,new PIXI.Rectangle(0,uploadedImage.height*0.2,uploadedImage.width,uploadedImage.height*0.35));
+    var bodyTex=new PIXI.Texture(tex.baseTexture,new PIXI.Rectangle(0,uploadedImage.height*0.5,uploadedImage.width,uploadedImage.height*0.5));
+    var bg=new PIXI.Sprite(tex);bg.scale.set(s);bg.alpha=0.3;
+    var body=new PIXI.Sprite(bodyTex);body.scale.set(s);body.y=H*0.5;
+    var face=new PIXI.Sprite(faceTex);face.scale.set(s);face.anchor.set(0.5,0.5);face.x=W/2;face.y=H*0.375;
+    var hair=new PIXI.Sprite(hairTex);hair.scale.set(s);
+    pixiApp.stage.addChild(bg,body,face,hair);
+    var t=0,blinkT=0,blinkS=0;
+    pixiApp.ticker.add(function(){
+      t+=0.016;blinkT+=0.016;
+      if(blinkT>3.5+Math.random()*1.5&&blinkS===0){blinkS=1;blinkT=0}
+      var eS=1,mY=0;
+      if(currentExpression==='happy'){eS=0.7;mY=-2}
+      else if(currentExpression==='sad'){eS=0.85;mY=2}
+      else if(currentExpression==='angry'){eS=0.9}
+      else if(currentExpression==='surprised'){eS=1.15;mY=3}
+      var br=Math.sin(t*1.8)*0.003;
+      body.scale.set(s*(1+br),s*(1+br*0.5));body.y=H*0.5+Math.sin(t*1.8)*1.5;
+      var ax=Math.sin(t*0.4)*0.05,ay=Math.sin(t*0.3)*0.03;
+      var hx=(parseFloat(params.headX)||0)+ax,hy=(parseFloat(params.headY)||0)+ay;
+      face.rotation=hx*0.03;face.x=W/2+hx*8;face.y=H*0.375+hy*5+mY*0.5;
+      if(blinkS===1){face.scale.set(s,s*Math.max(0.97,1-blinkT*3));if(blinkT>0.08){blinkS=2;blinkT=0}}
+      else if(blinkS===2){face.scale.set(s,s*Math.min(1,0.97+blinkT*3));if(blinkT>0.08){blinkS=0;blinkT=0}}
+      else{face.scale.set(s,s*eS)}
+      var w=Math.sin(t*1.2)*0.8+Math.sin(t*2.3)*0.3;
+      hair.x=w*3+hx*2.5;hair.y=-Math.abs(w)*0.5;hair.skew.set(w*0.015+hx*0.02,0);hair.rotation=hx*0.015;
+    });
+  } else {
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;cv.style.borderRadius='12px';
+    container.appendChild(cv);var ctx=cv.getContext('2d');var t=0;
+    function fr(){if(!animRunning)return;t+=0.016;ctx.clearRect(0,0,W,H);
+      var br=Math.sin(t*1.8)*2,sw=Math.sin(t*1.2)*4+Math.sin(t*2.3)*1.5;
+      var hx=(parseFloat(params.headX)||0)*8+Math.sin(t*0.4)*2;
+      ctx.save();ctx.translate(0,br);ctx.drawImage(uploadedImage,0,uploadedImage.height*0.5,uploadedImage.width,uploadedImage.height*0.5,0,H*0.5,W,H*0.5);ctx.restore();
+      ctx.save();ctx.translate(W/2+hx,H*0.375);ctx.rotate(hx*0.003);ctx.drawImage(uploadedImage,0,uploadedImage.height*0.2,uploadedImage.width,uploadedImage.height*0.35,-W/2,-(H*0.35)/2,W,H*0.35);ctx.restore();
+      ctx.save();ctx.translate(sw,0);ctx.transform(1,0,sw*0.003,1,0,0);ctx.drawImage(uploadedImage,0,0,uploadedImage.width,uploadedImage.height*0.3,0,0,W,H*0.3);ctx.restore();
+      requestAnimationFrame(fr);}fr();
+  }
+}
+function stopAnimation(){animRunning=false;if(pixiApp){pixiApp.destroy(true);pixiApp=null}document.getElementById('anim-btn').textContent='\u25b6 Start Animation';document.getElementById('anim-container').innerHTML='';}
+function setExpression(e){currentExpression=e;document.querySelectorAll('.expr-btn').forEach(function(b){b.style.background='rgba(30,41,59,0.8)'});var a=document.querySelector('[data-expr="'+e+'"]');if(a)a.style.background='rgba(99,102,241,0.3)';}
 </script>
 </body>
 </html>
