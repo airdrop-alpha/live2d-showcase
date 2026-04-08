@@ -1538,6 +1538,14 @@ function startAnimation(){
   container.appendChild(pixiApp.view);
   pixiApp.view.style.borderRadius='12px';
   
+  // Add full image as static background to prevent black gaps
+  var bgTex=PIXI.Texture.from(uploadedImage);
+  var bgSprite=new PIXI.Sprite(bgTex);
+  bgSprite.scale.set(s);
+  bgSprite.alpha=1;
+  bgSprite.zIndex=-1;
+  pixiApp.stage.addChild(bgSprite);
+  
   if(realLayers&&realLayers.length>0){
     loadRealLayers(W,H,s);
   }else{
@@ -1635,17 +1643,17 @@ function setupRealLayerAnimation(sprites,W,H,s){
       }else if(cat==='hairBack'){
         sp.x+=hairSwing*H*0.025+hx*3;sp.skew.x=hairSwing*0.04;sp.rotation=hx*0.01;
       }else if(cat==='face'||cat==='neck'){
-        sp.x+=hx*6;sp.y+=hy*4+breath*2;sp.rotation=hx*0.02;
+        sp.x+=hx*3;sp.y+=hy*4+breath*2;sp.rotation=hx*0.02;
       }else if(cat==='brows'){
-        sp.x+=hx*6;sp.y+=hy*3+exprP.browY;sp.rotation=hx*0.02;
+        sp.x+=hx*3;sp.y+=hy*3+exprP.browY;sp.rotation=hx*0.02;
       }else if(cat==='mouth'){
-        sp.x+=hx*5;sp.y+=hy*5-exprP.mouthC*5;
+        sp.x+=hx*2.5;sp.y+=hy*5-exprP.mouthC*5;
         sp.scale.set(s*(1+Math.abs(exprP.mouthC)*0.12),s*(1+exprP.mouthOpenY*0.4));
         sp.rotation=hx*0.02;
       }else if(cat==='clothing'){
-        sp.x+=hx*2;sp.y+=breath*2;sp.scale.set(s*(1+breath*0.003),s);
+        sp.x+=hx*1;sp.y+=breath*2;sp.scale.set(s*(1+breath*0.003),s);
       }else{
-        sp.x+=hx*2;sp.y+=breath*1.5;
+        sp.x+=hx*1;sp.y+=breath*0.8;
       }
     });
   });
