@@ -1399,7 +1399,7 @@ function handleFile(f){
 function runSegmentation(){
   if(!uploadedImage){alert('Please upload a character image first');return}
   if(!API_URL){alert('Backend offline');return}
-  document.getElementById('run-btn').style.display='none';
+  pollFails=0;document.getElementById('run-btn').style.display='none';
   document.getElementById('progress-bar').style.display='block';
   updateProgress(5,'Uploading...');
   var cv=document.createElement('canvas');
@@ -1421,43 +1421,47 @@ function pollStatus(){
   fetch(API_URL+'/api/status/'+jobId)
   .then(function(r){
     if(!r.ok){
-      console.log('Status HTTP',r.status);
+      pollFails++;
+      console.log('Status HTTP',r.status,'fails:',pollFails);
+      if(pollFails>=5){
+        clearInterval(pollTimer);
+        updateProgress(0,'Server lost track of this job. Please refresh and try again.');
+        document.getElementById('run-btn').style.display='inline-block';
+        document.getElementById('run-btn').textContent='✨ Generate VTuber Model';
+      }
       return null;
     }
+    pollFails=0;
     return r.json();
   })
   .then(function(d){
     if(!d)return;
-    console.log('Status:',JSON.stringify(d));
     var status=d.status||'unknown';
     var progress=d.progress||0;
     var step=d.step||'';
-    
     if(status==='done'){
       clearInterval(pollTimer);
       updateProgress(100,'Complete!');
       setTimeout(function(){showFinalResults(d)},500);
     } else if(status==='error'){
       clearInterval(pollTimer);
-      updateProgress(0,'Error: '+(d.error||'Unknown error'));
+      updateProgress(0,'Error: '+(d.error||'Unknown'));
       document.getElementById('run-btn').style.display='inline-block';
     } else {
-      // Processing — show real progress, cap at 95
       var pct=Math.min(progress,95);
       if(pct<5)pct=5;
-      var labels={
-        ai_segmentation:'AI analyzing layers...',
-        segmenting:'Segmenting character...',
-        parsing_layers:'Parsing layers...',
-        generating_model:'Generating Live2D model...',
-        packaging:'Creating download package...'
-      };
-      var msg=labels[step]||step||'Processing...';
-      updateProgress(pct,msg);
+      var labels={ai_segmentation:'AI analyzing layers...',segmenting:'Segmenting...',parsing_layers:'Parsing layers...',generating_model:'Generating model...',packaging:'Packaging...'};
+      updateProgress(pct,labels[step]||step||'Processing...');
     }
   })
   .catch(function(e){
-    console.log('Poll error:',e.message||e);
+    pollFails++;
+    console.log('Poll error:',e.message||e,'fails:',pollFails);
+    if(pollFails>=5){
+      clearInterval(pollTimer);
+      updateProgress(0,'Connection lost. Please refresh and try again.');
+      document.getElementById('run-btn').style.display='inline-block';
+    }
   });
 }
 
