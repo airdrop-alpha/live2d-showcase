@@ -1368,19 +1368,21 @@
   }
 </script>
 <script>
+var HF_SPACE='https://24yearsold-see-through-demo.hf.space';
 var API_URL='https://live2d-auto-gen-api.fly.dev';
-var uploadedImage=null,jobId=null,pollTimer=null;
+var uploadedImage=null,jobId=null,pollTimer=null,pollFails=0;
 var animRunning=false,pixiApp=null;
 var params={headX:0,headY:0};
 var currentExpression='neutral';
 var mouseX=0.5,mouseY=0.5;
 var realLayers=null;
+var psdUrl=null;
 
 function handleFile(f){
   if(!f||!f.type.startsWith('image/'))return;
   var r=new FileReader();r.onload=function(e){
     var img=new Image();img.onload=function(){
-      uploadedImage=img;realLayers=null;
+      uploadedImage=img;realLayers=null;psdUrl=null;
       var oc=document.getElementById('original-canvas'),sc=document.getElementById('segment-canvas');
       var s=Math.min(350/img.width,350/img.height,1);
       oc.width=sc.width=Math.round(img.width*s);oc.height=sc.height=Math.round(img.height*s);
@@ -1388,7 +1390,7 @@ function handleFile(f){
       sc.getContext('2d').drawImage(img,0,0,sc.width,sc.height);
       document.getElementById('demo-preview').style.display='block';
       document.getElementById('run-btn').style.display='inline-block';
-      document.getElementById('run-btn').textContent='\u2728 Generate VTuber Model';
+      document.getElementById('run-btn').textContent='\u2728 Generate VTuber Model (AI)';
       document.getElementById('results').style.display='none';
       document.getElementById('anim-section').style.display='none';
       document.getElementById('progress-bar').style.display='none';
@@ -1396,22 +1398,169 @@ function handleFile(f){
   };r.readAsDataURL(f);
 }
 
-function runSegmentation(){
-  if(!uploadedImage){alert('Please upload a character image first');return}
-  if(!API_URL){alert('Backend offline');return}
-  pollFails=0;document.getElementById('run-btn').style.display='none';
+function updateProgress(p,m){
+  p=Math.min(Math.max(p,0),100);
+  var b=document.getElementById('prog-fill'),t=document.getElementById('prog-text');
+  if(b)b.style.width=p+'%';
+  if(t)t.textContent=Math.round(p)+'% - '+m;
+}
+
+// ===== HF SPACE DIRECT CALL =====
+async function runSegmentation(){
+  if(!uploadedImage){alert('Please upload an image first');return}
+  
+  document.getElementById('run-btn').style.display='none';
   document.getElementById('progress-bar').style.display='block';
-  updateProgress(5,'Uploading...');
+  updateProgress(5,'Uploading to AI server...');
+  
+  try{
+    // Step 1: Upload image to HF Space
+    var cv=document.createElement('canvas');
+    cv.width=uploadedImage.naturalWidth||uploadedImage.width;
+    cv.height=uploadedImage.naturalHeight||uploadedImage.height;
+    cv.getContext('2d').drawImage(uploadedImage,0,0);
+    var blob=await new Promise(function(r){cv.toBlob(r,'image/png')});
+    
+    var fd=new FormData();
+    fd.append('files',blob,'character.png');
+    updateProgress(10,'Uploading image...');
+    
+    var upRes=await fetch(HF_SPACE+'/gradio_api/upload',{method:'POST',body:fd});
+    if(!upRes.ok)throw new Error('Upload failed: '+upRes.status);
+    var upData=await upRes.json();
+    var filePath=upData[0];
+    console.log('Uploaded:',filePath);
+    
+    // Step 2: Start inference
+    updateProgress(15,'Starting AI layer decomposition...');
+    var callRes=await fetch(HF_SPACE+'/gradio_api/call/inference',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({data:[{path:filePath,orig_name:'character.png',size:blob.size,mime_type:'image/png'}]})
+    });
+    if(!callRes.ok)throw new Error('Inference failed: '+callRes.status);
+    var callData=await callRes.json();
+    var eventId=callData.event_id;
+    console.log('Event ID:',eventId);
+    
+    // Step 3: Listen for SSE result
+    updateProgress(20,'AI analyzing layers (this takes 2-3 minutes)...');
+    
+    var result=await new Promise(function(resolve,reject){
+      var es=new EventSource(HF_SPACE+'/gradio_api/call/inference/'+eventId);
+      var progressVal=20;
+      
+      es.onmessage=function(e){
+        console.log('SSE:',e.data.substring(0,100));
+        if(e.data.startsWith('{')){
+          try{
+            var d=JSON.parse(e.data);
+            // Progress events
+            if(d.msg==='progress'){
+              progressVal=Math.min(20+Math.round((d.progress||0)*70),90);
+              updateProgress(progressVal,'AI processing layers...');
+            }
+          }catch(x){}
+        }
+        // Gradio SSE format: event lines
+      };
+      
+      es.addEventListener('complete',function(e){
+        es.close();
+        try{
+          var d=JSON.parse(e.data);
+          resolve(d);
+        }catch(x){reject(new Error('Parse error'))}
+      });
+      
+      es.addEventListener('error',function(e){
+        if(e.data){
+          es.close();
+          reject(new Error(e.data));
+        }
+      });
+      
+      es.onerror=function(){
+        // SSE can reconnect, don't reject immediately
+        progressVal=Math.min(progressVal+2,90);
+        updateProgress(progressVal,'Processing...');
+      };
+      
+      // Timeout after 5 minutes
+      setTimeout(function(){es.close();reject(new Error('Timeout: AI processing took too long'))},300000);
+    });
+    
+    updateProgress(95,'Processing results...');
+    console.log('Result:',result);
+    
+    // Parse result: [psd_file, gallery_list]
+    var data=result;
+    if(data.length>=2){
+      // PSD file
+      if(data[0]&&data[0].url){
+        psdUrl=HF_SPACE+'/gradio_api/file='+data[0].path;
+      }else if(typeof data[0]==='string'){
+        psdUrl=HF_SPACE+'/gradio_api/file='+data[0];
+      }
+      
+      // Gallery layers
+      var gallery=data[1]||[];
+      realLayers=[];
+      for(var i=0;i<gallery.length;i++){
+        var item=gallery[i];
+        var imgInfo=item.image||item;
+        var label=item.caption||item.label||'layer_'+i;
+        if(typeof imgInfo==='object'&&imgInfo.url){
+          realLayers.push({name:label,imageUrl:imgInfo.url,width:0,height:0,z_order:i});
+        }else if(typeof imgInfo==='string'){
+          realLayers.push({name:label,imageUrl:HF_SPACE+'/gradio_api/file='+imgInfo,width:0,height:0,z_order:i});
+        }
+      }
+      console.log('Layers:',realLayers.length);
+    }
+    
+    showFinalResults({
+      status:'done',
+      layer_count:realLayers?realLayers.length:0,
+      layers:realLayers||[],
+      layers_with_urls:realLayers||[],
+      has_psd:!!psdUrl
+    });
+    
+  }catch(err){
+    console.error('Error:',err);
+    updateProgress(0,'Error: '+err.message);
+    document.getElementById('run-btn').style.display='inline-block';
+    document.getElementById('run-btn').textContent='\u2728 Try Again';
+    
+    // Offer fallback to backend
+    if(API_URL){
+      setTimeout(function(){
+        if(confirm('AI server busy. Try local processing instead? (fewer layers but instant)')){
+          runFallbackBackend();
+        }
+      },1000);
+    }
+  }
+}
+
+// Fallback to our Fly.io backend
+function runFallbackBackend(){
+  document.getElementById('run-btn').style.display='none';
+  document.getElementById('progress-bar').style.display='block';
+  updateProgress(5,'Using local processing...');
+  
   var cv=document.createElement('canvas');
-  cv.width=uploadedImage.naturalWidth||uploadedImage.width;cv.height=uploadedImage.naturalHeight||uploadedImage.height;
+  cv.width=uploadedImage.naturalWidth||uploadedImage.width;
+  cv.height=uploadedImage.naturalHeight||uploadedImage.height;
   cv.getContext('2d').drawImage(uploadedImage,0,0);
   cv.toBlob(function(blob){
     var fd=new FormData();fd.append('file',blob,'character.png');
     fetch(API_URL+'/api/upload',{method:'POST',body:fd})
     .then(function(r){return r.json()})
-    .then(function(d){jobId=d.job_id;updateProgress(10,'Starting AI segmentation...');return fetch(API_URL+'/api/process/'+d.job_id,{method:'POST'})})
+    .then(function(d){jobId=d.job_id;updateProgress(10,'Processing...');return fetch(API_URL+'/api/process/'+d.job_id,{method:'POST'})})
     .then(function(r){return r.json()})
-    .then(function(){pollTimer=setInterval(pollStatus,2000)})
+    .then(function(){pollFails=0;pollTimer=setInterval(pollStatus,2000)})
     .catch(function(e){updateProgress(0,'Error: '+e.message);document.getElementById('run-btn').style.display='inline-block'});
   },'image/png');
 }
@@ -1419,105 +1568,55 @@ function runSegmentation(){
 function pollStatus(){
   if(!jobId)return;
   fetch(API_URL+'/api/status/'+jobId)
-  .then(function(r){
-    if(!r.ok){
-      pollFails++;
-      console.log('Status HTTP',r.status,'fails:',pollFails);
-      if(pollFails>=5){
-        clearInterval(pollTimer);
-        updateProgress(0,'Server lost track of this job. Please refresh and try again.');
-        document.getElementById('run-btn').style.display='inline-block';
-        document.getElementById('run-btn').textContent='✨ Generate VTuber Model';
-      }
-      return null;
-    }
-    pollFails=0;
-    return r.json();
-  })
-  .then(function(d){
-    if(!d)return;
-    var status=d.status||'unknown';
-    var progress=d.progress||0;
-    var step=d.step||'';
-    if(status==='done'){
-      clearInterval(pollTimer);
-      updateProgress(100,'Complete!');
-      setTimeout(function(){showFinalResults(d)},500);
-    } else if(status==='error'){
-      clearInterval(pollTimer);
-      updateProgress(0,'Error: '+(d.error||'Unknown'));
-      document.getElementById('run-btn').style.display='inline-block';
-    } else {
-      var pct=Math.min(progress,95);
-      if(pct<5)pct=5;
-      var labels={ai_segmentation:'AI analyzing layers...',segmenting:'Segmenting...',parsing_layers:'Parsing layers...',generating_model:'Generating model...',packaging:'Packaging...'};
-      updateProgress(pct,labels[step]||step||'Processing...');
-    }
-  })
-  .catch(function(e){
-    pollFails++;
-    console.log('Poll error:',e.message||e,'fails:',pollFails);
-    if(pollFails>=5){
-      clearInterval(pollTimer);
-      updateProgress(0,'Connection lost. Please refresh and try again.');
-      document.getElementById('run-btn').style.display='inline-block';
-    }
-  });
-}
-
-function updateProgress(p,m){
-  p=Math.min(Math.max(p,0),100);
-  var b=document.getElementById('prog-fill');
-  var t=document.getElementById('prog-text');
-  if(b)b.style.width=p+'%';
-  if(t)t.textContent=Math.round(p)+'% - '+m;
+  .then(function(r){if(!r.ok){pollFails++;if(pollFails>=5){clearInterval(pollTimer);updateProgress(0,'Server error. Please refresh.');document.getElementById('run-btn').style.display='inline-block'}return null}pollFails=0;return r.json()})
+  .then(function(d){if(!d)return;if(d.status==='done'){clearInterval(pollTimer);updateProgress(100,'Complete!');setTimeout(function(){showFinalResults(d)},500)}else if(d.status==='error'){clearInterval(pollTimer);updateProgress(0,'Error: '+(d.error||'Unknown'));document.getElementById('run-btn').style.display='inline-block'}else{updateProgress(Math.min(d.progress||50,95),d.step||'Processing...')}})
+  .catch(function(e){pollFails++;if(pollFails>=5){clearInterval(pollTimer);updateProgress(0,'Connection lost');document.getElementById('run-btn').style.display='inline-block'}});
 }
 
 function showFinalResults(data){
   document.getElementById('progress-bar').style.display='none';
   document.getElementById('results').style.display='block';
   try{document.getElementById('anim-section').style.display='block'}catch(e){}
+  updateProgress(100,'Complete!');
   document.getElementById('layer-count').textContent=data.layer_count||0;
   
-  realLayers=(data.layers_with_urls||data.layers||[]).map(function(l){
-    return{name:l.name,width:l.width,height:l.height,z_order:l.z_order,
-      imageUrl:API_URL+(l.image_url||'/api/layer/'+jobId+'/'+l.name)};
-  });
-  
   var grid=document.getElementById('layer-grid');grid.innerHTML='';
-  var colors=['#7c3aed','#06b6d4','#f59e0b','#e11d48','#16a34a','#8b5cf6','#0891b2','#fbbf24'];
-  (data.layers||[]).forEach(function(l,i){
+  var colors=['#7c3aed','#06b6d4','#f59e0b','#e11d48','#16a34a','#8b5cf6','#0891b2','#fbbf24','#ec4899','#10b981'];
+  var layers=data.layers_with_urls||data.layers||[];
+  layers.forEach(function(l,i){
     var c=colors[i%colors.length];
     var card=document.createElement('div');
     card.style.cssText='background:rgba(30,41,59,0.8);border-radius:10px;padding:10px 6px;border:1px solid '+c+'40';
-    card.innerHTML='<div style="width:20px;height:20px;border-radius:50%;background:'+c+';margin:0 auto 6px"></div><div style="color:#e2e8f0;font-size:0.7rem">'+l.name+'</div><div style="color:#64748b;font-size:0.6rem">'+l.width+'x'+l.height+'</div>';
+    // Show thumbnail if we have image URL
+    var thumb='';
+    if(l.imageUrl){
+      thumb='<img src="'+l.imageUrl+'" style="width:60px;height:60px;object-fit:contain;border-radius:6px;margin-bottom:4px" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    }
+    card.innerHTML=thumb+'<div style="color:#e2e8f0;font-size:0.7rem">'+l.name+'</div>';
     grid.appendChild(card);
   });
   
+  // Download buttons
   var dlZ=document.getElementById('dl-zip');
-  dlZ.disabled=false;dlZ.style.cursor='pointer';dlZ.style.color='white';
-  dlZ.style.background='linear-gradient(135deg,#6366f1,#a855f7)';
-  dlZ.textContent='\ud83d\udce6 Download for VTube Studio';
-  dlZ.onclick=function(){window.open(API_URL+'/api/download/'+jobId,'_blank')};
   var dlP=document.getElementById('dl-psd');
-  if(data.has_psd){dlP.disabled=false;dlP.style.cursor='pointer';dlP.style.color='#e2e8f0';dlP.textContent='\ud83d\udcc4 Download PSD';dlP.onclick=function(){window.open(API_URL+'/api/download-psd/'+jobId,'_blank')}}
+  if(psdUrl){
+    dlP.disabled=false;dlP.style.cursor='pointer';dlP.style.color='white';
+    dlP.style.background='linear-gradient(135deg,#6366f1,#a855f7)';
+    dlP.textContent='\ud83d\udcc4 Download PSD (AI Layers)';
+    dlP.onclick=function(){window.open(psdUrl,'_blank')};
+  }
+  if(jobId&&API_URL){
+    dlZ.disabled=false;dlZ.style.cursor='pointer';dlZ.style.color='white';
+    dlZ.style.background='linear-gradient(135deg,#6366f1,#a855f7)';
+    dlZ.textContent='\ud83d\udce6 Download ZIP';
+    dlZ.onclick=function(){window.open(API_URL+'/api/download/'+jobId,'_blank')};
+  }
+  
   document.getElementById('run-btn').style.display='inline-block';
   document.getElementById('run-btn').textContent='\ud83d\udd04 Process Another';
 }
 
-function categorizeLayer(name){
-  name=name.toLowerCase();
-  if(name.indexOf('hair')>=0&&name.indexOf('front')>=0)return'hairFront';
-  if(name.indexOf('hair')>=0)return'hairBack';
-  if(name.indexOf('eye')>=0||name.indexOf('iris')>=0||name.indexOf('lash')>=0)return'eyes';
-  if(name.indexOf('brow')>=0)return'brows';
-  if(name.indexOf('mouth')>=0||name.indexOf('lip')>=0||name.indexOf('teeth')>=0)return'mouth';
-  if(name.indexOf('face')>=0||name.indexOf('head')>=0||name.indexOf('nose')>=0||name.indexOf('ear')>=0)return'face';
-  if(name.indexOf('neck')>=0)return'neck';
-  if(name.indexOf('cloth')>=0||name.indexOf('top')>=0||name.indexOf('bottom')>=0||name.indexOf('wear')>=0)return'clothing';
-  return'body';
-}
-
+// ===== ANIMATION (keep existing) =====
 function startAnimation(){
   if(animRunning){stopAnimation();return}
   if(!uploadedImage)return;
@@ -1538,12 +1637,10 @@ function startAnimation(){
   container.appendChild(pixiApp.view);
   pixiApp.view.style.borderRadius='12px';
   
-  // Add full image as static background to prevent black gaps
+  // Background
   var bgTex=PIXI.Texture.from(uploadedImage);
   var bgSprite=new PIXI.Sprite(bgTex);
-  bgSprite.scale.set(s);
-  bgSprite.alpha=1;
-  bgSprite.zIndex=-1;
+  bgSprite.scale.set(s);bgSprite.zIndex=-1;
   pixiApp.stage.addChild(bgSprite);
   
   if(realLayers&&realLayers.length>0){
@@ -1553,138 +1650,86 @@ function startAnimation(){
   }
 }
 
-function loadRealLayers(W,H,s){
-  var loaded=0,total=realLayers.length;
-  var sprites=[];
-  
-  var sorted=realLayers.slice().sort(function(a,b){return(a.z_order||0)-(b.z_order||0)});
-  
-  sorted.forEach(function(layer,idx){
-    var img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=function(){
-      var tex=PIXI.Texture.from(img);
-      var sprite=new PIXI.Sprite(tex);
-      sprite.scale.set(s);
-      sprite.alpha=1;
-      sprite.name=layer.name;
-      sprite._category=categorizeLayer(layer.name);
-      sprite._origX=0;sprite._origY=0;
-      sprite.zIndex=layer.z_order||idx;
-      sprites.push(sprite);
-      pixiApp.stage.addChild(sprite);
-      loaded++;
-      if(loaded>=total){
-        pixiApp.stage.sortableChildren=true;
-        pixiApp.stage.sortChildren();
-        setupRealLayerAnimation(sprites,W,H,s);
-      }
-    };
-    img.onerror=function(){
-      loaded++;
-      if(loaded>=total&&sprites.length>0){
-        pixiApp.stage.sortableChildren=true;
-        pixiApp.stage.sortChildren();
-        setupRealLayerAnimation(sprites,W,H,s);
-      }
-    };
-    img.src=layer.imageUrl;
-  });
-  
-  setTimeout(function(){
-    if(sprites.length===0)loadFallbackLayers(W,H,s);
-  },5000);
+function categorizeLayer(name){
+  name=(name||'').toLowerCase();
+  if(name.indexOf('front hair')>=0)return'hairFront';
+  if(name.indexOf('back hair')>=0||name.indexOf('hair')>=0)return'hairBack';
+  if(name.indexOf('eye')>=0||name.indexOf('iris')>=0||name.indexOf('irides')>=0)return'eyes';
+  if(name.indexOf('brow')>=0)return'brows';
+  if(name.indexOf('mouth')>=0||name.indexOf('lip')>=0)return'mouth';
+  if(name.indexOf('face')>=0||name.indexOf('head')>=0||name.indexOf('nose')>=0||name.indexOf('ear')>=0)return'face';
+  if(name.indexOf('neck')>=0)return'neck';
+  if(name.indexOf('wear')>=0||name.indexOf('cloth')>=0||name.indexOf('top')>=0||name.indexOf('bottom')>=0)return'clothing';
+  return'body';
 }
 
-function setupRealLayerAnimation(sprites,W,H,s){
-  var hairInertia={x:0,vx:0};
-  var eyeMasks=[];
-  sprites.forEach(function(sp){
-    if(sp._category!=='eyes')return;
-    var gfx=new PIXI.Graphics();
-    pixiApp.stage.addChild(gfx);
-    sp.mask=gfx;
-    eyeMasks.push({sp:sp,gfx:gfx});
+function loadRealLayers(W,H,s){
+  var loaded=0,total=realLayers.length,sprites=[];
+  var sorted=realLayers.slice().sort(function(a,b){return(a.z_order||0)-(b.z_order||0)});
+  sorted.forEach(function(layer,idx){
+    var img=new Image();img.crossOrigin='anonymous';
+    img.onload=function(){
+      var tex=PIXI.Texture.from(img);
+      var sp=new PIXI.Sprite(tex);sp.scale.set(s);sp.name=layer.name;
+      sp._category=categorizeLayer(layer.name);sp._origX=0;sp._origY=0;sp.zIndex=idx;
+      sprites.push(sp);pixiApp.stage.addChild(sp);
+      loaded++;if(loaded>=total){pixiApp.stage.sortableChildren=true;pixiApp.stage.sortChildren();setupAnim(sprites,W,H,s)}
+    };
+    img.onerror=function(){loaded++;if(loaded>=total&&sprites.length>0){pixiApp.stage.sortableChildren=true;pixiApp.stage.sortChildren();setupAnim(sprites,W,H,s)}};
+    img.src=layer.imageUrl;
   });
-  var t=0,blinkV=1,blinkPhase=0,nextBlink=2+Math.random()*3,isBlinking=false;
-  var exprP={eyeS:1,browY:0,mouthC:0,mouthOpenY:0};
-  pixiApp.ticker.add(function(delta){
-    var dt=delta/60;t+=dt;blinkPhase+=dt;
-    if(!isBlinking&&blinkPhase>=nextBlink){isBlinking=true;blinkV=0;setTimeout(function(){blinkV=1;isBlinking=false;blinkPhase=0;nextBlink=2+Math.random()*3},120)}
-    if(blinkV<1&&!isBlinking)blinkV=Math.min(1,blinkV+dt*12);
-    var hx=(mouseX-0.5)*2+Math.sin(t*0.4)*0.06;
-    var hy=(mouseY-0.5)*2+Math.sin(t*0.3)*0.04;
-    hx=Math.max(-1,Math.min(1,hx));hy=Math.max(-1,Math.min(1,hy));
-    if(currentExpression==='happy'){exprP.eyeS=0.55;exprP.browY=-H*0.03;exprP.mouthC=1.0;exprP.mouthOpenY=0.35}
-    else if(currentExpression==='sad'){exprP.eyeS=0.45;exprP.browY=H*0.025;exprP.mouthC=-0.9;exprP.mouthOpenY=0}
-    else if(currentExpression==='angry'){exprP.eyeS=0.75;exprP.browY=H*0.03;exprP.mouthC=-0.6;exprP.mouthOpenY=0.1}
-    else if(currentExpression==='surprised'){exprP.eyeS=1.5;exprP.browY=-H*0.03;exprP.mouthC=0;exprP.mouthOpenY=0.85}
-    else{exprP.eyeS=1;exprP.browY=0;exprP.mouthC=0;exprP.mouthOpenY=0}
-    var wind=Math.sin(t*1.6)*2.5+Math.sin(t*0.9)*1.2;
-    var breath=(Math.sin(t*2.5)+1)/2;
-    var hairTarget=hx*27;
-    hairInertia.vx+=((hairTarget-hairInertia.x)*4-hairInertia.vx*3)*dt;
-    hairInertia.x+=hairInertia.vx*dt;
-    var hairSwing=(hairInertia.x+wind)/30;
-    var eyeOpen=Math.max(0,Math.min(1,blinkV*Math.min(1,exprP.eyeS)));
-    eyeMasks.forEach(function(em){
-      var sp=em.sp,gfx=em.gfx,th=sp.texture.height*s;
-      var irisDrop=(1-eyeOpen)*th*0.12;
-      sp.x=sp._origX+hx*7;sp.y=sp._origY+hy*4+irisDrop;sp.rotation=hx*0.02;
-      gfx.clear();gfx.beginFill(0xFFFFFF);
-      gfx.drawRect(-W,sp.y+th*(1-eyeOpen),W*3,th*eyeOpen+4);gfx.endFill();
-    });
-    sprites.forEach(function(sp){
-      var cat=sp._category;
-      if(cat==='eyes')return;
-      sp.x=sp._origX;sp.y=sp._origY;sp.rotation=0;sp.scale.set(s);sp.skew.set(0,0);
-      if(cat==='hairFront'){
-        sp.x+=hairSwing*H*0.04+hx*4;sp.skew.x=hairSwing*0.06;sp.rotation=hx*0.015;
-      }else if(cat==='hairBack'){
-        sp.x+=hairSwing*H*0.025+hx*3;sp.skew.x=hairSwing*0.04;sp.rotation=hx*0.01;
-      }else if(cat==='face'||cat==='neck'){
-        sp.x+=hx*3;sp.y+=hy*4+breath*2;sp.rotation=hx*0.02;
-      }else if(cat==='brows'){
-        sp.x+=hx*3;sp.y+=hy*3+exprP.browY;sp.rotation=hx*0.02;
-      }else if(cat==='mouth'){
-        sp.x+=hx*2.5;sp.y+=hy*5-exprP.mouthC*5;
-        sp.scale.set(s*(1+Math.abs(exprP.mouthC)*0.12),s*(1+exprP.mouthOpenY*0.4));
-        sp.rotation=hx*0.02;
-      }else if(cat==='clothing'){
-        sp.x+=hx*1;sp.y+=breath*2;sp.scale.set(s*(1+breath*0.003),s);
-      }else{
-        sp.x+=hx*1;sp.y+=breath*0.8;
-      }
-    });
-  });
+  setTimeout(function(){if(sprites.length===0)loadFallbackLayers(W,H,s)},8000);
 }
 
 function loadFallbackLayers(W,H,s){
   var baseTex=PIXI.BaseTexture.from(uploadedImage);
-  var regions=[
-    {name:'hairBack',y:0,h:0.28,z:0},{name:'body',y:0.48,h:0.52,z:1},
-    {name:'face',y:0.18,h:0.38,z:2},{name:'hairFront',y:0,h:0.2,z:3}
-  ];
+  var regions=[{name:'body',y:0.48,h:0.52,z:1},{name:'face',y:0.18,h:0.38,z:2},{name:'hairFront',y:0,h:0.25,z:3}];
   var sprites=[];
   regions.forEach(function(reg){
     var tex=new PIXI.Texture(baseTex,new PIXI.Rectangle(0,uploadedImage.height*reg.y,uploadedImage.width,uploadedImage.height*reg.h));
-    var sp=new PIXI.Sprite(tex);sp.scale.set(s);sp.y=H*reg.y;
-    sp.name=reg.name;sp._category=reg.name;sp._origX=0;sp._origY=H*reg.y;
-    sp.zIndex=reg.z;sprites.push(sp);pixiApp.stage.addChild(sp);
+    var sp=new PIXI.Sprite(tex);sp.scale.set(s);sp.y=H*reg.y;sp.name=reg.name;sp._category=reg.name;sp._origX=0;sp._origY=H*reg.y;sp.zIndex=reg.z;
+    sprites.push(sp);pixiApp.stage.addChild(sp);
   });
   pixiApp.stage.sortableChildren=true;pixiApp.stage.sortChildren();
-  setupRealLayerAnimation(sprites,W,H,s);
+  setupAnim(sprites,W,H,s);
+}
+
+function setupAnim(sprites,W,H,s){
+  var t=0,blinkV=1,blinkP=0,nextB=3;
+  var exprP={eyeS:1,browY:0,mouthC:0};
+  pixiApp.ticker.add(function(delta){
+    var dt=delta/60;t+=dt;blinkP+=dt;
+    if(blinkP>=nextB&&blinkV>=0.99){blinkV=0;blinkP=0;nextB=2.5+Math.random()*3}
+    if(blinkV<1)blinkV=Math.min(1,blinkV+dt*8);
+    var hx=(mouseX-0.5)*1.5+(parseFloat(params.headX)||0)+Math.sin(t*0.4)*0.04;
+    var hy=(mouseY-0.5)*1+(parseFloat(params.headY)||0)+Math.sin(t*0.3)*0.03;
+    hx=Math.max(-1,Math.min(1,hx));hy=Math.max(-1,Math.min(1,hy));
+    if(currentExpression==='happy'){exprP.eyeS=0.75;exprP.mouthC=0.3}
+    else if(currentExpression==='sad'){exprP.eyeS=0.85;exprP.browY=2}
+    else if(currentExpression==='angry'){exprP.eyeS=0.9;exprP.browY=-2}
+    else if(currentExpression==='surprised'){exprP.eyeS=1.15;exprP.mouthC=-0.2}
+    else{exprP.eyeS=1;exprP.browY=0;exprP.mouthC=0}
+    var wind=Math.sin(t*1.3)*0.8+Math.sin(t*2.7)*0.3;
+    var breath=Math.sin(t*1.8);
+    sprites.forEach(function(sp){
+      var cat=sp._category;
+      sp.x=sp._origX;sp.y=sp._origY;sp.rotation=0;sp.scale.set(s);sp.skew.set(0,0);
+      if(cat==='hairFront'||cat==='hairBack'){sp.x+=wind*2+hx*1.5;sp.skew.x=wind*0.008;sp.rotation=hx*0.01}
+      else if(cat==='face'||cat==='neck'){sp.x+=hx*2;sp.y+=hy*1.5+breath*0.5;sp.rotation=hx*0.012}
+      else if(cat==='eyes'){sp.x+=hx*2.5;sp.y+=hy*1.5;sp.scale.set(s,s*blinkV*exprP.eyeS);sp.rotation=hx*0.012}
+      else if(cat==='brows'){sp.x+=hx*2;sp.y+=hy*1+exprP.browY;sp.rotation=hx*0.012}
+      else if(cat==='mouth'){sp.x+=hx*1.8;sp.y+=hy*2+exprP.mouthC*2;sp.rotation=hx*0.012}
+      else if(cat==='clothing'){sp.x+=hx*0.8;sp.y+=breath*0.6}
+      else{sp.x+=hx*0.8;sp.y+=breath*0.4}
+    });
+  });
 }
 
 function canvasFB(c,W,H){
   var cv=document.createElement('canvas');cv.width=W;cv.height=H;cv.style.borderRadius='12px';c.appendChild(cv);
   var ctx=cv.getContext('2d');var t=0;
-  cv.onmousemove=function(e){var r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)/W;mouseY=(e.clientY-r.top)/H};
   function fr(){if(!animRunning)return;t+=0.016;ctx.clearRect(0,0,W,H);
-    var hx=(mouseX-0.5)*2+Math.sin(t*0.4)*0.08;var sw=Math.sin(t*1.2)*4;
-    ctx.save();ctx.translate(0,Math.sin(t*1.8)*2);ctx.drawImage(uploadedImage,0,uploadedImage.height*0.5,uploadedImage.width,uploadedImage.height*0.5,0,H*0.5,W,H*0.5);ctx.restore();
-    ctx.save();ctx.translate(W/2+hx*8,H*0.375);ctx.rotate(hx*0.02);ctx.drawImage(uploadedImage,0,uploadedImage.height*0.2,uploadedImage.width,uploadedImage.height*0.35,-W/2,-(H*0.35)/2,W,H*0.35);ctx.restore();
-    ctx.save();ctx.translate(sw+hx*3,0);ctx.drawImage(uploadedImage,0,0,uploadedImage.width,uploadedImage.height*0.28,0,0,W,H*0.28);ctx.restore();
+    ctx.drawImage(uploadedImage,0,0,W,H);
     requestAnimationFrame(fr);}fr();
 }
 
