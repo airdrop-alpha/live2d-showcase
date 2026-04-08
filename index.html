@@ -1418,14 +1418,56 @@ function runSegmentation(){
 
 function pollStatus(){
   if(!jobId)return;
-  fetch(API_URL+'/api/status/'+jobId).then(function(r){return r.json()}).then(function(d){
-    if(d.status==='done'){clearInterval(pollTimer);updateProgress(100,'Complete!');showFinalResults(d)}
-    else if(d.status==='error'){clearInterval(pollTimer);updateProgress(0,'Error: '+(d.error||'Unknown'));document.getElementById('run-btn').style.display='inline-block'}
-    else{var labels={ai_segmentation:'AI analyzing layers (2-3 min)...',parsing_layers:'Parsing layers...',generating_model:'Generating model...',packaging:'Packaging...'};updateProgress((d.progress||parseInt(document.getElementById("prog-fill").style.width)||15)+1,labels[d.step]||'Processing...')}
-  }).catch(function(e){console.log("poll err:",e)});
+  fetch(API_URL+'/api/status/'+jobId)
+  .then(function(r){
+    if(!r.ok){
+      console.log('Status HTTP',r.status);
+      return null;
+    }
+    return r.json();
+  })
+  .then(function(d){
+    if(!d)return;
+    console.log('Status:',JSON.stringify(d));
+    var status=d.status||'unknown';
+    var progress=d.progress||0;
+    var step=d.step||'';
+    
+    if(status==='done'){
+      clearInterval(pollTimer);
+      updateProgress(100,'Complete!');
+      setTimeout(function(){showFinalResults(d)},500);
+    } else if(status==='error'){
+      clearInterval(pollTimer);
+      updateProgress(0,'Error: '+(d.error||'Unknown error'));
+      document.getElementById('run-btn').style.display='inline-block';
+    } else {
+      // Processing — show real progress, cap at 95
+      var pct=Math.min(progress,95);
+      if(pct<5)pct=5;
+      var labels={
+        ai_segmentation:'AI analyzing layers...',
+        segmenting:'Segmenting character...',
+        parsing_layers:'Parsing layers...',
+        generating_model:'Generating Live2D model...',
+        packaging:'Creating download package...'
+      };
+      var msg=labels[step]||step||'Processing...';
+      updateProgress(pct,msg);
+    }
+  })
+  .catch(function(e){
+    console.log('Poll error:',e.message||e);
+  });
 }
 
-function updateProgress(p,m){var b=document.getElementById('prog-fill'),t=document.getElementById('prog-text');if(b)b.style.width=p+'%';if(t)t.textContent=p+'% - '+m}
+function updateProgress(p,m){
+  p=Math.min(Math.max(p,0),100);
+  var b=document.getElementById('prog-fill');
+  var t=document.getElementById('prog-text');
+  if(b)b.style.width=p+'%';
+  if(t)t.textContent=Math.round(p)+'% - '+m;
+}
 
 function showFinalResults(data){
   document.getElementById('progress-bar').style.display='none';
