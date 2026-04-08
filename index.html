@@ -1421,8 +1421,8 @@ function pollStatus(){
   fetch(API_URL+'/api/status/'+jobId).then(function(r){return r.json()}).then(function(d){
     if(d.status==='done'){clearInterval(pollTimer);updateProgress(100,'Complete!');showFinalResults(d)}
     else if(d.status==='error'){clearInterval(pollTimer);updateProgress(0,'Error: '+(d.error||'Unknown'));document.getElementById('run-btn').style.display='inline-block'}
-    else{var labels={ai_segmentation:'AI analyzing layers (2-3 min)...',parsing_layers:'Parsing layers...',generating_model:'Generating model...',packaging:'Packaging...'};updateProgress(d.progress||50,labels[d.step]||'Processing...')}
-  }).catch(function(){});
+    else{var labels={ai_segmentation:'AI analyzing layers (2-3 min)...',parsing_layers:'Parsing layers...',generating_model:'Generating model...',packaging:'Packaging...'};updateProgress((d.progress||parseInt(document.getElementById("prog-fill").style.width)||15)+1,labels[d.step]||'Processing...')}
+  }).catch(function(e){console.log("poll err:",e)});
 }
 
 function updateProgress(p,m){var b=document.getElementById('prog-fill'),t=document.getElementById('prog-text');if(b)b.style.width=p+'%';if(t)t.textContent=p+'% - '+m}
