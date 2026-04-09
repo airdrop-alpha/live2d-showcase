@@ -1794,15 +1794,16 @@ function pollGenStatus(){
   .then(function(r){return r.ok?r.json():null})
   .then(function(d){
     if(!d)return;
-    var completed=d.completed||[];
+    var completedCount=typeof d.completed==='number'?d.completed:(d.completed||[]).length;
     var total=d.total||12;
-    var current=d.current_layer||'';
+    var stepStr=d.step||'';
+    var currentLayer=stepStr.replace(/^generated /,'');
+    var layers=d.layers||[];
     if(d.status==='done'){
       clearInterval(genPollTimer);
-      updateProgress(100,'All '+completed.length+' layers generated!');
-      realLayers=completed.map(function(l,i){
-        var name=l.name||l;
-        return{name:name,imageUrl:API_URL+'/api/generate/layer/'+genJobId+'/'+name,width:0,height:0,z_order:i};
+      updateProgress(100,'All '+completedCount+' layers generated!');
+      realLayers=layers.filter(function(l){return l.status==='done'&&l.image_url}).map(function(l,i){
+        return{name:l.name,imageUrl:API_URL+l.image_url,width:0,height:0,z_order:l.z_order||i};
       });
       psdUrl=null;jobId=genJobId;
       if(!uploadedImage&&realLayers.length>0){
@@ -1817,7 +1818,7 @@ function pollGenStatus(){
       document.getElementById('gen-btn').style.display='inline-block';
     }else{
       var pct=Math.min(d.progress||0,95);
-      updateProgress(Math.max(pct,5),'Generating '+current+' ('+completed.length+'/'+total+')...');
+      updateProgress(Math.max(pct,5),'Generating '+(currentLayer||'layer')+' ('+completedCount+'/'+total+')...');
     }
   }).catch(function(e){console.log('Gen poll error:',e)});
 }
