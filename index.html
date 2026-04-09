@@ -1421,6 +1421,42 @@ function updateProgress(p,m){
 // ===== HF SPACE DIRECT CALL =====
 async function runSegmentation(){
   if(!uploadedImage){alert('Please upload an image first');return}
+  if(!API_URL){alert('Backend offline');return}
+  
+  pollFails=0;
+  document.getElementById('run-btn').style.display='none';
+  document.getElementById('progress-bar').style.display='block';
+  document.getElementById('results').style.display='none';
+  try{document.getElementById('anim-section').style.display='none'}catch(e){}
+  updateProgress(5,'Uploading image...');
+  
+  try{
+    var cv=document.createElement('canvas');
+    cv.width=uploadedImage.naturalWidth||uploadedImage.width;
+    cv.height=uploadedImage.naturalHeight||uploadedImage.height;
+    cv.getContext('2d').drawImage(uploadedImage,0,0);
+    var blob=await new Promise(function(r){cv.toBlob(r,'image/png')});
+    
+    var fd=new FormData();fd.append('file',blob,'character.png');
+    var upRes=await fetch(API_URL+'/api/upload',{method:'POST',body:fd});
+    if(!upRes.ok)throw new Error('Upload failed: '+upRes.status);
+    var upData=await upRes.json();
+    jobId=upData.job_id;
+    
+    updateProgress(10,'Starting segmentation + AI enhancement...');
+    var procRes=await fetch(API_URL+'/api/process/'+jobId,{method:'POST'});
+    if(!procRes.ok)throw new Error('Process failed: '+procRes.status);
+    
+    pollFails=0;
+    pollTimer=setInterval(pollStatus,3000);
+  }catch(e){
+    console.error('Error:',e);
+    updateProgress(0,'Error: '+e.message);
+    document.getElementById('run-btn').style.display='inline-block';
+    document.getElementById('run-btn').textContent='Try Again';
+  }
+}async function runSegmentation(){
+  if(!uploadedImage){alert('Please upload an image first');return}
   
   document.getElementById('run-btn').style.display='none';
   document.getElementById('progress-bar').style.display='block';
@@ -1790,7 +1826,7 @@ async function startAIGenerate(){
 }
 function pollGenStatus(){
   if(!genJobId)return;
-  fetch(API_URL+'/api/generate/status/'+genJobId)
+  fetch(API_URL+'/api/status/'+genJobId)
   .then(function(r){return r.ok?r.json():null})
   .then(function(d){
     if(!d)return;
@@ -1829,7 +1865,7 @@ function showGenResults(){
     if(dlZ){dlZ.disabled=false;dlZ.style.cursor='pointer';dlZ.style.color='white';
       dlZ.style.background='linear-gradient(135deg,#6366f1,#a855f7)';
       dlZ.textContent='Download All Layers (ZIP)';
-      dlZ.onclick=function(){window.open(API_URL+'/api/generate/zip/'+genJobId,'_blank')};}
+      dlZ.onclick=function(){window.open(API_URL+'/api/download/'+genJobId,'_blank')};}
     document.getElementById('gen-btn').style.display='inline-block';
     document.getElementById('gen-btn').textContent='Generate Another';
   },1000);
