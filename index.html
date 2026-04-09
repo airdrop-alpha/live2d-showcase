@@ -578,7 +578,20 @@
     <code style="display:block;background:rgba(0,0,0,0.3);border-radius:6px;padding:8px 12px;margin-top:8px;color:#7dd3fc;font-size:0.8rem">cd backend &amp;&amp; uvicorn app.main:app --port 8002</code>
   </div>
   <!-- Upload Area -->
-  <div id="upload-area" onclick="document.getElementById('file-input').click()"
+  <div 
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:1.5rem">
+      <button id="tab-upload" onclick="switchTab('upload')" style="padding:10px 24px;border:2px solid #6366f1;border-radius:10px;background:rgba(99,102,241,0.2);color:#e2e8f0;cursor:pointer;font-size:0.95rem;font-weight:600">📷 Upload Image</button>
+      <button id="tab-generate" onclick="switchTab('generate')" style="padding:10px 24px;border:2px solid #33415540;border-radius:10px;background:rgba(30,41,59,0.5);color:#94a3b8;cursor:pointer;font-size:0.95rem">🤖 AI Generate</button>
+    </div>
+    <div id="generate-panel" style="display:none;text-align:center;margin-bottom:1.5rem">
+      <p style="color:#94a3b8;font-size:0.85rem;margin-bottom:1rem">Describe your character and AI will generate each layer separately using Nano Banana 2</p>
+      <input id="char-desc" type="text" placeholder="e.g. cute anime girl with pink hair, blue eyes, school uniform" style="width:90%;max-width:500px;padding:12px 16px;border:1px solid #334155;border-radius:10px;background:rgba(15,23,42,0.8);color:#e2e8f0;font-size:0.9rem;margin-bottom:1rem" value="cute anime girl with long pink hair, bright blue eyes, wearing a white and blue school uniform with ribbon">
+      <br>
+      <button id="gen-btn" onclick="startAIGenerate()" style="padding:12px 28px;font-size:1rem;border:none;border-radius:12px;background:linear-gradient(135deg,#ec4899,#a855f7);color:white;cursor:pointer;transition:transform .2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🤖 Generate VTuber Layers (AI)</button>
+      <p style="color:#64748b;font-size:0.75rem;margin-top:0.5rem">~12 layers, takes about 2-3 minutes</p>
+    </div>
+    <div id="upload-panel">
+id="upload-area" onclick="document.getElementById('file-input').click()"
        style="border:2px dashed #6366f1;border-radius:16px;padding:60px 40px;cursor:pointer;transition:all .3s;background:rgba(99,102,241,0.05);margin-bottom:2rem"
        ondragover="event.preventDefault();this.style.borderColor='#a855f7';this.style.background='rgba(168,85,247,0.1)'"
        ondragleave="this.style.borderColor='#6366f1';this.style.background='rgba(99,102,241,0.05)'"
@@ -588,6 +601,7 @@
     <div style="color:#64748b;font-size:0.9rem">or click to browse • PNG / JPG</div>
   </div>
   <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
+    </div> <!-- /upload-panel -->
 
   <!-- Preview + Results -->
   <div id="demo-preview" style="display:none">
@@ -1737,6 +1751,103 @@ function stopAnimation(){animRunning=false;if(pixiApp){pixiApp.destroy(true);pix
 function setExpression(e){currentExpression=e;document.querySelectorAll('.expr-btn').forEach(function(b){b.style.background='rgba(30,41,59,0.8)'});var a=document.querySelector('[data-expr="'+e+'"]');if(a)a.style.background='rgba(99,102,241,0.3)'}
 
 var counted=false;window.addEventListener('scroll',function(){if(counted)return;var el=document.getElementById('compare');if(!el)return;if(el.getBoundingClientRect().top<window.innerHeight*0.8){counted=true;document.querySelectorAll('.count-up').forEach(function(el){var tgt=parseInt(el.getAttribute('data-target')),st=performance.now();function step(ts){var p=Math.min((ts-st)/1500,1);el.textContent=Math.floor(p*tgt);if(p<1)requestAnimationFrame(step);else el.textContent=tgt}requestAnimationFrame(step)})}});
+
+// === TAB SWITCHING ===
+function switchTab(tab) {
+  var up = document.getElementById("upload-panel");
+  var gp = document.getElementById("generate-panel");
+  var tU = document.getElementById("tab-upload");
+  var tG = document.getElementById("tab-generate");
+  if(tab === "upload") {
+    if(up) up.style.display = "block";
+    if(gp) gp.style.display = "none";
+    tU.style.background = "rgba(99,102,241,0.2)"; tU.style.borderColor = "#6366f1"; tU.style.color = "#e2e8f0";
+    tG.style.background = "rgba(30,41,59,0.5)"; tG.style.borderColor = "#33415540"; tG.style.color = "#94a3b8";
+  } else {
+    if(up) up.style.display = "none";
+    if(gp) gp.style.display = "block";
+    tG.style.background = "rgba(168,85,247,0.2)"; tG.style.borderColor = "#a855f7"; tG.style.color = "#e2e8f0";
+    tU.style.background = "rgba(30,41,59,0.5)"; tU.style.borderColor = "#33415540"; tU.style.color = "#94a3b8";
+  }
+}
+
+// === AI GENERATE ===
+var genJobId = null;
+var genPollTimer = null;
+
+async function startAIGenerate() {
+  var desc = document.getElementById("char-desc").value.trim();
+  if(!desc) { alert("Please enter a character description"); return; }
+  document.getElementById("gen-btn").style.display = "none";
+  document.getElementById("demo-preview").style.display = "block";
+  document.getElementById("progress-bar").style.display = "block";
+  document.getElementById("results").style.display = "none";
+  document.getElementById("anim-section").style.display = "none";
+  updateProgress(2, "Starting AI layer generation...");
+  try {
+    var res = await fetch(API_URL + "/api/generate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({description: desc})
+    });
+    if(!res.ok) throw new Error("Server error: " + res.status);
+    var data = await res.json();
+    genJobId = data.job_id;
+    updateProgress(5, "Generating layers with Nano Banana 2...");
+    genPollTimer = setInterval(pollGenStatus, 3000);
+  } catch(e) {
+    updateProgress(0, "Error: " + e.message);
+    document.getElementById("gen-btn").style.display = "inline-block";
+  }
+}
+
+function pollGenStatus() {
+  if(!genJobId) return;
+  fetch(API_URL + "/api/generate/status/" + genJobId)
+  .then(function(r) { return r.ok ? r.json() : null; })
+  .then(function(d) {
+    if(!d) return;
+    var pct = Math.min(d.progress || 0, 95);
+    var completed = d.completed || [];
+    var total = d.total || 12;
+    var current = d.current_layer || "";
+    if(d.status === "done") {
+      clearInterval(genPollTimer);
+      updateProgress(100, "All " + completed.length + " layers generated!");
+      realLayers = completed.map(function(l, i) {
+        return { name: l.name || l, imageUrl: API_URL + "/api/generate/layer/" + genJobId + "/" + (l.name || l), width: 0, height: 0, z_order: i };
+      });
+      psdUrl = null; jobId = genJobId;
+      if(!uploadedImage && realLayers.length > 0) {
+        var tmpImg = new Image();
+        tmpImg.crossOrigin = "anonymous";
+        tmpImg.onload = function() { uploadedImage = tmpImg; showFinalResults({ status: "done", layer_count: realLayers.length, layers: realLayers, layers_with_urls: realLayers, has_psd: false }); };
+        tmpImg.src = realLayers[0].imageUrl;
+      } else {
+        showFinalResults({ status: "done", layer_count: realLayers.length, layers: realLayers, layers_with_urls: realLayers, has_psd: false });
+      }
+      setTimeout(function() {
+        var dlZ = document.getElementById("dl-zip");
+        if(dlZ) {
+          dlZ.disabled = false; dlZ.style.cursor = "pointer"; dlZ.style.color = "white";
+          dlZ.style.background = "linear-gradient(135deg,#6366f1,#a855f7)";
+          dlZ.textContent = "Download All Layers (ZIP)";
+          dlZ.onclick = function() { window.open(API_URL + "/api/generate/zip/" + genJobId, "_blank"); };
+        }
+        document.getElementById("gen-btn").style.display = "inline-block";
+        document.getElementById("gen-btn").textContent = "Generate Another";
+      }, 1000);
+    } else if(d.status === "error") {
+      clearInterval(genPollTimer);
+      updateProgress(0, "Error: " + (d.error || "Unknown"));
+      document.getElementById("gen-btn").style.display = "inline-block";
+    } else {
+      updateProgress(Math.max(pct, 5), "Generating " + current + " (" + completed.length + "/" + total + ")...");
+    }
+  })
+  .catch(function(e) { console.log("Gen poll error:", e); });
+}
+
 </script>
 </body>
 </html>
